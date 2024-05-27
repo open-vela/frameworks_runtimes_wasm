@@ -105,6 +105,9 @@ add_link_options(-Wl,--gc-sections)
 
 add_library(driver ${DRIVER_SRC})
 
+list(APPEND IRQ_SRC ${CMAKE_CURRENT_SOURCE_DIR}/src/irq.c)
+add_library(irq ${IRQ_SRC})
+
 # Adds a WebAssembly application to the build system.
 #
 # This function creates an executable target for the given source files,
@@ -120,6 +123,7 @@ function(add_wasm_application name)
     add_executable(${name} ${SRC})
     set_target_properties(${name} PROPERTIES SUFFIX .wasm)
     target_link_libraries(${name} driver)
+    target_link_libraries(${name} irq)
 
     # Define common parameters for wamrc
     set(WAMRC_COMMON_PARAMS
