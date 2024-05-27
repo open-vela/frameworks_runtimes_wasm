@@ -1,0 +1,22 @@
+#
+# For a description of the syntax of this configuration file,
+# see the file kconfig-language.txt in the NuttX tools repository.
+#
+
+config  WASM_IRQ
+	bool "WASM IRQ configure"
+	default n
+	---help---
+		Control Wasm IRQ thread compilation switch configuration.
+
+if WASM_IRQ
+
+config WASM_IRQ_THREAD_PRIORITY
+        int "Webassembly IRQ thread priority"
+        default 100
+
+config WASM_IRQ_THREAD_STACK_SIZE
+        int "Webassembly IRQ thread stack size"
+        default 2048
+
+endif

@@ -68,3 +68,8 @@ getreg8
 getreg16
 getreg32
 nanosleep
+irq_attach
+irq_enable
+irq_disable
+irq_initialize
+irq_uninitialize
