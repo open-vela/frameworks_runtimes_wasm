@@ -1,0 +1,46 @@
+# README for SDK 2.0
+
+This folder is intended to hold the major implementation of the SDK 2.0:
+- The `examples` folder contains a set of examples that show how to use the SDK in different scenarios.
+- The `include` folder contains the header files needed by the SDK.
+- The `src` folder contains the source code for the SDK.
+- The `CMakeLists.txt` file is used by CMake to build the app with the SDK.
+- The `cmake` folder contains the CMake modules that are used by the SDK.
+
+# Setup
+
+To use the SDK, you need to prepare the original source code of the Bouffalo SDK 2.0 and put it in a folder named `bouffalo_sdk`
+in the same directory as this README file.
+
+The cmake based build system will check if the `bouffalo_sdk` folder exists, and if not, it will report an error,
+clone the repository from GitHub and put it together with the README.md file in the same directory:
+
+```bash
+git clone https://github.com/bouffalolab/bouffalo_sdk.git -b V2.0.0 bouffalo_sdk
+```
+
+# Build
+
+To build the app with the SDK, you need to run CMake under root directory (where this README.md file is located):
+
+```bash
+cmake -Bbuild . -DAPP=examples/gpio_output
+cmake --build build
+```
+
+Then you can find the executable wasm file `gpio.wasm` in the `build/examples/gpio_output` folder.
+
+# Examples
+
+The examples are located under the `examples` directory, each example is a separate CMake project with its own `CMakeLists.txt`.
+
+Currently, there are several examples:
+- `gpio_output`: This example demonstrates how to use bouffalo SDK 2.0 API to set GPIO pin as output and toggle it.
+- `gpio_output_raw`: This example demonstrates how to use raw register access to control GPIO pins, used for debugging register access issues.
+
+# Configuration
+
+The configuration is done via CMake variables:
+- `APP`: Required, the name of the application to build (e.g., `examples/gpio_output`)
+- `WASI_SDK_PATH`: Required, path to the WASI SDK installation directory
+- `VELA_SYSROOT`: Optional, path to the Vela sysroot directory, if not specified, it will be automatically detected
