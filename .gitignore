@@ -1,6 +1,11 @@
+.built
+.depend
 .kconfig
 /Kconfig
 Make.dep
 .depend
 *.o
 .built
+
+*.o
+Make.dep
