@@ -39,6 +39,13 @@ if(NOT EXISTS ${VELA_SYSROOT})
     message(FATAL "VELA_SYSROOT not found, please set it correctly")
 endif()
 
+# Generated defined symbols file for the project,
+# it's combines the symbols from VELA_SYSROOT and BLFB_SDK
+file(READ ${VELA_SYSROOT}/share/defined-symbols.txt VELA_SYSROOT_SYMBOLS)
+file(READ ${CMAKE_CURRENT_LIST_DIR}/cmake/defined-symbols.txt BLFB_SDK_SYMBOLS)
+# Write the combined symbols to a file
+file(WRITE ${CMAKE_BINARY_DIR}/defined-symbols.txt "${VELA_SYSROOT_SYMBOLS}${BLFB_SDK_SYMBOLS}")
+
 # BEGIN: Don't use stdlib (wasi-libc) to reduce RAM usage
 # You can comment this out if you want to use stdlib (wasi-libc)
 
@@ -48,7 +55,7 @@ add_link_options(-Wl,--no-entry)
 add_link_options(-Wl,--export=main)
 add_link_options(-Wl,--export=__heap_base)
 add_link_options(-Wl,--export=__data_end)
-add_link_options(-Wl,--allow-undefined-file=${VELA_SYSROOT}/share/defined-symbols.txt)
+add_link_options(-Wl,--allow-undefined-file=${CMAKE_BINARY_DIR}/defined-symbols.txt)
 # TODO: Change this value according by cmake configuration
 add_link_options(-Wl,--initial-memory=65536)
 add_link_options(-z stack-size=4096)
@@ -80,8 +87,6 @@ list(APPEND DRIVER_SRC ${BOUFFALO_SDK_PATH}/drivers/lhal/src/bflb_i2s.c)
 list(APPEND DRIVER_SRC ${BOUFFALO_SDK_PATH}/drivers/lhal/src/bflb_ir.c)
 list(APPEND DRIVER_SRC ${BOUFFALO_SDK_PATH}/drivers/lhal/src/bflb_spi.c)
 
-list(APPEND SOC_SRC ${BOUFFALO_SDK_PATH}/drivers/soc/bl616/std/port/bl616_clock.c)
-
 # Essential global flags to build wasm application
 
 # -fdata-sections and -ffunction-sections are used to reduce the size of the binary file
@@ -92,13 +97,12 @@ add_compile_options(-ffunction-sections)
 add_link_options(-Wl,-gc-sections)
 
 add_library(driver ${DRIVER_SRC})
-add_library(soc ${SOC_SRC})
 
 # Utility functions for add wasm application to the build system
 function(add_wasm_application name SRC)
     add_executable(${name} ${SRC})
     set_target_properties(${name} PROPERTIES SUFFIX .wasm)
-    target_link_libraries(${name} driver soc)
+    target_link_libraries(${name} driver)
 
     # Post process for wasm application, compile it to AOT module by wamrc
     add_custom_command(TARGET ${name} POST_BUILD

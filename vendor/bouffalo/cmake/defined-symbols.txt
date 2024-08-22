@@ -1,0 +1,3 @@
+bflb_mtimer_get_time_ms
+HBN_Get_Xtal_Type
+bflb_clk_get_peripheral_clock
