@@ -55,13 +55,15 @@ add_link_options(-z stack-size=4096)
 
 # END: Don't use stdlib (wasi-libc) to reduce RAM usage
 
+# Make include directories available to the build as higher priority than bouffalo sdk
+include_directories(include)
+
 # Add bouffalo sdk include directories
 include_directories(${BOUFFALO_SDK_PATH}/drivers/lhal/include)
 include_directories(${BOUFFALO_SDK_PATH}/drivers/lhal/include/arch)
 include_directories(${BOUFFALO_SDK_PATH}/drivers/lhal/src/flash)
 include_directories(${BOUFFALO_SDK_PATH}/drivers/soc/bl616/std/include)
 include_directories(${BOUFFALO_SDK_PATH}/drivers/soc/bl616/std/include/hardware)
-include_directories(include)
 
 # Add definitions needed by bouffalo sdk
 add_compile_definitions(ARCH_RISCV)
