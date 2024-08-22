@@ -6,6 +6,8 @@ This folder is intended to hold the major implementation of the SDK 2.0:
 - The `src` folder contains the source code for the SDK.
 - The `CMakeLists.txt` file is used by CMake to build the app with the SDK.
 - The `cmake` folder contains the CMake modules that are used by the SDK.
+  - The `wasi-sdk.cmake` file is used to configure the comiler and linker for the Wasm target.
+  - The `defined-symbols.txt` file is used to provide a list of symbols that are exported from the BLFB native library.
 
 # Setup
 
@@ -37,6 +39,7 @@ The examples are located under the `examples` directory, each example is a separ
 Currently, there are several examples:
 - `gpio_output`: This example demonstrates how to use bouffalo SDK 2.0 API to set GPIO pin as output and toggle it.
 - `gpio_output_raw`: This example demonstrates how to use raw register access to control GPIO pins, used for debugging register access issues.
+- `uart_poll`: This example demonstrates how to use bouffalo SDK 2.0 API to read and write data from/to UART by polling mode.
 
 # Configuration
 
