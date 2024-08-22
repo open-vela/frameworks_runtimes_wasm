@@ -15,3 +15,18 @@
  */
 
 #pragma once
+
+#include <stdint.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+uint32_t csi_coret_get_valueh(void);
+uint32_t csi_coret_get_value(void);
+uint32_t __get_MCYCLEH(void);
+uint32_t __get_MCYCLE(void);
+
+#ifdef __cplusplus
+}
+#endif
