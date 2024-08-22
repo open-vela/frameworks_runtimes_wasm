@@ -28,7 +28,7 @@ cmake -Bbuild . -DAPP=examples/gpio_output
 cmake --build build
 ```
 
-Then you can find the executable wasm file `gpio.wasm` in the `build/examples/gpio_output` folder.
+Then you can find the executable wasm file `gpio.wasm` and `gpio.aot` in the `build/examples/gpio_output` folder.
 
 # Examples
 
