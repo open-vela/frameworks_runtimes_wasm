@@ -29,22 +29,10 @@ config WASM_MEMORY_REGISTER_ACCESS
         This option enables the ability to access CPU registers in WebAssembly environments by
         custom bounds checks by WAMR
 
-if WASM_MEMORY_REGISTER_ACCESS
-
-config WASM_MEMORY_REGISTER_REGION_START
-    hex "Start address of the register region"
-    default 0x20000000
+config WASM_MEMORY_PUTREG_GETREG
+    bool "Enable putreg/getreg operations"
+    default n
     ---help---
-        The start address of the register region for bounds checking.
-        Default value is for BL616 chip.
-
-config WASM_MEMORY_REGISTER_REGION_END
-    hex "End address of the register region"
-    default 0x20072000
-    ---help---
-        The end address of the register region for bounds checking.
-        Default value is for BL616 chip.
-
-endif # WASM_MEMORY_REGISTER_ACCESS
+        This option enables the ability to use putreg and getreg operations to access CPU registers in WebAssembly environments.
 
 endif # WASM_MEMORY_OPERATIONS
