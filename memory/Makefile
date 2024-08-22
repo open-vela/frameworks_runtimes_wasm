@@ -18,4 +18,7 @@ include $(APPDIR)/Make.defs
 
 CSRCS += memory.c
 
+WAMR_MODULE_NAME = register_access
+
+include $(APPDIR)/interpreters/wamr/Module.mk
 include $(APPDIR)/Application.mk
