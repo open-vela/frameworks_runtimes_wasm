@@ -14,11 +14,25 @@
  * limitations under the License.
  */
 
-#ifndef _WASM_CALL_NATIVE_API_H_
-#define _WASM_CALL_NATIVE_API_H_
+#include <sys/param.h>
 
-#include "wasm_export.h"
+#include "./include/chre_wrapper.h"
 
-int get_ext_export_apis(NativeSymbol **p_ext_lib_apis);
+#ifdef CONFIG_CHRE_WASM
+
+#define REG_CHRE_NATIVE_FUNC(func_name, signature)               \
+    {                                                            \
+#func_name, (void*)(func_name##Wrapper), signature, NULL \
+    }
+
+static NativeSymbol g_chre_symbols[] = {
+#include "./include/chre.inl"
+};
+
+int wamr_module_chre_register(void)
+{
+    return wasm_runtime_register_natives("chre", g_chre_symbols,
+        nitems(g_chre_symbols));
+}
 
 #endif
