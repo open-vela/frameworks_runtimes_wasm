@@ -16,6 +16,8 @@
 
 #include "include/ble_wrapper.h"
 
+#ifdef CONFIG_CHRE_WASM
+
 uint32_t chreBleGetCapabilitiesWrapper(wasm_exec_env_t execEnv)
 {
     return chreBleGetCapabilities();
@@ -50,3 +52,5 @@ bool chreBleStopScanAsyncWrapper(wasm_exec_env_t execEnv)
 {
     return chreBleStopScanAsync();
 }
+
+#endif
