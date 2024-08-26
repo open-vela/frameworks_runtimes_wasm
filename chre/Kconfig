@@ -14,9 +14,9 @@
 # limitations under the License.
 #
 
-if CHRE
 config CHRE_WASM
         bool "wasm nanoapp support"
+        depends on CHRE
         default n
         ---help---
                 chre wasm nanoapp support
@@ -25,5 +25,4 @@ if CHRE_WASM
 config CHRE_WASM_HEAP_BUFFER_SIZE
         int "configure chre wasm global heap buffer size"
         default 131072
-endif
 endif
