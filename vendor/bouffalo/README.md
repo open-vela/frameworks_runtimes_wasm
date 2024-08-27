@@ -39,6 +39,7 @@ The examples are located under the `examples` directory, each example is a separ
 Currently, there are several examples:
 - `gpio_output`: This example demonstrates how to use bouffalo SDK 2.0 API to set GPIO pin as output and toggle it.
 - `gpio_output_raw`: This example demonstrates how to use raw register access to control GPIO pins, used for debugging register access issues.
+- `uart_fifo_interrupt`: This example demonstrates how to read and write data from/to UART using interrupt mode.
 - `uart_poll`: This example demonstrates how to use bouffalo SDK 2.0 API to read and write data from/to UART by polling mode.
 
 # Configuration
