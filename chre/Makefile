@@ -20,9 +20,11 @@
 
 include $(APPDIR)/Make.defs
 
+ifneq ($(CONFIG_CHRE_WASM),)
 CXXEXT = .cc
 CXXSRCS  +=  chre.cc
 CXXSRCS  +=  ble_wrapper.cc
+endif
 
 # Set WAMR_MODULE_NAME and include Module.mk to add this module to the list of
 # builtin modules for the WAMR runtime. WAMR_MODULE_NAME must be unique across all

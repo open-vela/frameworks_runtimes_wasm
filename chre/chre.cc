@@ -18,7 +18,9 @@
 
 #include "./include/chre_wrapper.h"
 
-#ifdef CONFIG_CHRE_WASM
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #define REG_CHRE_NATIVE_FUNC(func_name, signature)               \
     {                                                            \
@@ -35,4 +37,6 @@ int wamr_module_chre_register(void)
         nitems(g_chre_symbols));
 }
 
+#ifdef __cplusplus
+}
 #endif
