@@ -94,12 +94,24 @@ add_compile_options(-fdata-sections)
 add_compile_options(-ffunction-sections)
 
 # -Wl,--gc-sections is used to remove unused sections from the binary file
-add_link_options(-Wl,-gc-sections)
+add_link_options(-Wl,--gc-sections)
 
 add_library(driver ${DRIVER_SRC})
 
 # Utility functions for add wasm application to the build system
 function(add_wasm_application name SRC)
+    """
+    Adds a WebAssembly application to the build system.
+
+    This function creates an executable target for the given source files,
+    sets the target properties to produce a .wasm file, links the target with
+    the 'driver' library, and adds a custom post-build command to compile the
+    WebAssembly application to an Ahead-Of-Time (AOT) module using wamrc.
+
+    Args:
+        name (str): The name of the WebAssembly application.
+        SRC (list): List of source files for the application.
+    """
     add_executable(${name} ${SRC})
     set_target_properties(${name} PROPERTIES SUFFIX .wasm)
     target_link_libraries(${name} driver)

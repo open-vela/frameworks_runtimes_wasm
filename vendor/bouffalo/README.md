@@ -48,3 +48,22 @@ The configuration is done via CMake variables:
 - `APP`: Required, the name of the application to build (e.g., `examples/gpio_output`)
 - `WASI_SDK_PATH`: Required, path to the WASI SDK installation directory
 - `VELA_SYSROOT`: Optional, path to the Vela sysroot directory, if not specified, it will be automatically detected
+
+# Notice
+
+1. The `defined-symbols.txt` file is used to identify which symbols are available in the Wasm runtime, which helps the compiler and linker to check for undefined references and link them at compile time. You should not modify this file manually to add new symbols. If an unsupported symbol is referenced by your code, it will cause a runtime error even if you have added the corresponding definition in `defined-symbols.txt`.
+
+2. Not all of the BFLB SDK APIs are compiled into WebAssembly, since some of them rely on hardware-specific instructions or features that are tightly coupled with the underlying operating system and cannot be emulated by Wasm. For example, ROM functions, mtimer based delay functions, etc. Full list can be found in `cmake/defined-symbols.txt`.
+
+Supported Peripherals:
+- GPIO (Input/Output)
+- UART (Poll)
+
+WIP Peripherals:
+- GPIO (Interrupt)
+- UART (Interrupt)
+- ADC (Poll/Interrupt)
+- I2C (Poll/Interrupt)
+- IR (Poll)
+- PWM (Poll/Interrupt)
+- SPI (Poll/Interrupt)
