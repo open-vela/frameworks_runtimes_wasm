@@ -1,3 +1,5 @@
 bflb_mtimer_get_time_ms
 HBN_Get_Xtal_Type
 bflb_clk_get_peripheral_clock
+bflb_efuse_get_adc_tsen_trim
+bflb_efuse_get_adc_trim
