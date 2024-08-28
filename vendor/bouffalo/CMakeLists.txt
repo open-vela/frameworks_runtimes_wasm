@@ -39,6 +39,11 @@ if(NOT EXISTS ${VELA_SYSROOT})
     message(FATAL "VELA_SYSROOT not found, please set it correctly")
 endif()
 
+# Check if the APP_STACK_SIZE is set, if not, default to 2048
+if(NOT DEFINED APP_STACK_SIZE)
+    set(APP_STACK_SIZE 2048)
+endif()
+
 # Generated defined symbols file for the project,
 # it's combines the symbols from VELA_SYSROOT and BLFB_SDK
 file(READ ${VELA_SYSROOT}/share/defined-symbols.txt VELA_SYSROOT_SYMBOLS)
@@ -56,9 +61,8 @@ add_link_options(-Wl,--export=main)
 add_link_options(-Wl,--export=__heap_base)
 add_link_options(-Wl,--export=__data_end)
 add_link_options(-Wl,--allow-undefined-file=${CMAKE_BINARY_DIR}/defined-symbols.txt)
-# TODO: Change this value according by cmake configuration
 add_link_options(-Wl,--initial-memory=65536)
-add_link_options(-z stack-size=4096)
+add_link_options(-z stack-size=${APP_STACK_SIZE})
 
 # END: Don't use stdlib (wasi-libc) to reduce RAM usage
 
@@ -98,20 +102,17 @@ add_link_options(-Wl,--gc-sections)
 
 add_library(driver ${DRIVER_SRC})
 
-# Utility functions for add wasm application to the build system
+# Adds a WebAssembly application to the build system.
+#
+# This function creates an executable target for the given source files,
+# sets the target properties to produce a .wasm file, links the target with
+# the 'driver' library, and adds a custom post-build command to compile the
+# WebAssembly application to an Ahead-Of-Time (AOT) module using wamrc.#
+# Args:
+#     name (str): The name of the WebAssembly application.
+#     SRC (list): List of source files for the application.
+
 function(add_wasm_application name SRC)
-    """
-    Adds a WebAssembly application to the build system.
-
-    This function creates an executable target for the given source files,
-    sets the target properties to produce a .wasm file, links the target with
-    the 'driver' library, and adds a custom post-build command to compile the
-    WebAssembly application to an Ahead-Of-Time (AOT) module using wamrc.
-
-    Args:
-        name (str): The name of the WebAssembly application.
-        SRC (list): List of source files for the application.
-    """
     add_executable(${name} ${SRC})
     set_target_properties(${name} PROPERTIES SUFFIX .wasm)
     target_link_libraries(${name} driver)

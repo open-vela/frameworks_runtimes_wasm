@@ -48,6 +48,7 @@ The configuration is done via CMake variables:
 - `APP`: Required, the name of the application to build (e.g., `examples/gpio_output`)
 - `WASI_SDK_PATH`: Required, path to the WASI SDK installation directory
 - `VELA_SYSROOT`: Optional, path to the Vela sysroot directory, if not specified, it will be automatically detected
+- `APP_STACK_SIZE`: Optional, stack size of the application, default is 2048 (bytes)
 
 # Notice
 
