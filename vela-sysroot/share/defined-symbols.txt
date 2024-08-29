@@ -66,3 +66,4 @@ putreg32
 getreg8
 getreg16
 getreg32
+nanosleep
