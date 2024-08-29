@@ -39,16 +39,4 @@ int board_uartx_gpio_init(void)
     return 0;
 }
 
-/* Delay function that is defined and used by BFLB SDK's example code */
-
-void bflb_mtimer_delay_ms(uint32_t delay)
-{
-    /*
-     * FIXME: Implement the following functions by clock_sleep/nanosleep
-     * Origin implementation is based on mtimer in RISCV platform, which is used
-     * by Vela OS, so in the Wasm side, we need to implement the same
-     * functionality to achieve the same effect.
-     */
-}
-
 #include "../../bouffalo_sdk/examples/peripherals/uart/uart_fifo_interrupt/main.c"
