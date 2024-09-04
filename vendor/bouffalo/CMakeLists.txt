@@ -117,9 +117,29 @@ function(add_wasm_application name SRC)
     set_target_properties(${name} PROPERTIES SUFFIX .wasm)
     target_link_libraries(${name} driver)
 
+    # Define common parameters for wamrc
+    set(WAMRC_COMMON_PARAMS
+        --target=riscv32
+        --target-abi=ilp32f
+        --cpu=generic-rv32
+        --cpu-features=+m,+a,+f,+c
+        --xip
+        --enable-builtin-intrinsics=i64.common,f64.common,f32.const,f64.const,f64xi32,f64xi64,f64_promote_f32,f32_demote_f64
+        --runtime-bounds-checks
+    )
+
     # Post process for wasm application, compile it to AOT module by wamrc
     add_custom_command(TARGET ${name} POST_BUILD
-        COMMAND ${WASI_SDK_PATH}/wamrc --target=riscv32 --target-abi=ilp32f --cpu=generic-rv32 --cpu-features=+m,+a,+f,+c --xip --enable-builtin-intrinsics=i64.common,f64.common,f32.const,f64.const,f64xi32,f64xi64,f64_promote_f32,f32_demote_f64 --runtime-bounds-checks -o $<TARGET_FILE:${name}>.aot $<TARGET_FILE:${name}>)
+        COMMAND ${WASI_SDK_PATH}/wamrc ${WAMRC_COMMON_PARAMS} -o $<TARGET_FILE:${name}>.aot $<TARGET_FILE:${name}>
+    )
+    # Post process for wasm application, compile it to LLVM IR by wamrc
+    add_custom_command(TARGET ${name} POST_BUILD
+        COMMAND ${WASI_SDK_PATH}/wamrc ${WAMRC_COMMON_PARAMS} --format=llvmir-opt -o $<TARGET_FILE:${name}>.ll $<TARGET_FILE:${name}>
+    )
+    # Post process for wasm application, compile it to ELF by wamrc
+    add_custom_command(TARGET ${name} POST_BUILD
+        COMMAND ${WASI_SDK_PATH}/wamrc ${WAMRC_COMMON_PARAMS} --format=object -o $<TARGET_FILE:${name}>.o $<TARGET_FILE:${name}>
+    )
 endfunction()
 
 # Add sub-directories to the build system by ${APP} from the command line
