@@ -37,6 +37,8 @@ Then you can find the executable wasm file `gpio.wasm` and `gpio.aot` in the `bu
 The examples are located under the `examples` directory, each example is a separate CMake project with its own `CMakeLists.txt`.
 
 Currently, there are several examples:
+- `adc_poll`: This example demonstrates how to use bouffalo SDK 2.0 API to read ADC value by polling.
+- `gpio_interrupt`: This example demonstrates how to use bouffalo SDK 2.0 API to set GPIO pin as input and trigger interrupt when the pin is high.
 - `gpio_output`: This example demonstrates how to use bouffalo SDK 2.0 API to set GPIO pin as output and toggle it.
 - `gpio_output_raw`: This example demonstrates how to use raw register access to control GPIO pins, used for debugging register access issues.
 - `uart_fifo_interrupt`: This example demonstrates how to read and write data from/to UART using interrupt mode.
