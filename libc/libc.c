@@ -56,7 +56,8 @@ struct wasm_timespec {
  * @return 0 on success, or -1 on failure (with errno set to indicate the error).
  */
 
-int nanosleep_wrapper(const struct wasm_timespec* req, struct wasm_timespec* rem)
+int nanosleep_wrapper(wasm_exec_env_t exec_env, const struct wasm_timespec* req,
+    struct wasm_timespec* rem)
 {
     int ret;
     struct timespec nreq, nrem;
