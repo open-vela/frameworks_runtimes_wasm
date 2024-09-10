@@ -38,6 +38,8 @@ The examples are located under the `examples` directory, each example is a separ
 
 Currently, there are several examples:
 - `adc_poll`: This example demonstrates how to use bouffalo SDK 2.0 API to read ADC value by polling.
+- `i2c_10_bit`: This example demonstrates how to use bouffalo SDK 2.0 API to write data to i2c by polling mode.
+- `i2c_eeprom`: This example demonstrates how to use bouffalo SDK 2.0 API to read/write data from/to i2c by polling mode.
 - `gpio_interrupt`: This example demonstrates how to use bouffalo SDK 2.0 API to set GPIO pin as input and trigger interrupt when the pin is high.
 - `gpio_output`: This example demonstrates how to use bouffalo SDK 2.0 API to set GPIO pin as output and toggle it.
 - `gpio_output_raw`: This example demonstrates how to use raw register access to control GPIO pins, used for debugging register access issues.
@@ -61,12 +63,14 @@ The configuration is done via CMake variables:
 Supported Peripherals:
 - GPIO (Input/Output)
 - UART (Poll)
+- ADC (Poll)
+- I2C (Poll)
 
 WIP Peripherals:
 - GPIO (Interrupt)
 - UART (Interrupt)
 - ADC (Poll/Interrupt)
-- I2C (Poll/Interrupt)
+- I2C (Interrupt)
 - IR (Poll)
 - PWM (Poll/Interrupt)
 - SPI (Poll/Interrupt)
