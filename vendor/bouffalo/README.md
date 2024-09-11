@@ -38,6 +38,8 @@ The examples are located under the `examples` directory, each example is a separ
 
 Currently, there are several examples:
 - `adc_poll`: This example demonstrates how to use bouffalo SDK 2.0 API to read ADC value by polling.
+- `adc_tsen`: This example demonstrates how to use bouffalo SDK 2.0 API to read temperature value by polling.
+- `adc_vbat`: This example demonstrates how to use bouffalo SDK 2.0 API to read battery voltage value by polling.
 - `i2c_10_bit`: This example demonstrates how to use bouffalo SDK 2.0 API to write data to i2c by polling mode.
 - `i2c_eeprom`: This example demonstrates how to use bouffalo SDK 2.0 API to read/write data from/to i2c by polling mode.
 - `gpio_interrupt`: This example demonstrates how to use bouffalo SDK 2.0 API to set GPIO pin as input and trigger interrupt when the pin is high.
@@ -69,7 +71,7 @@ Supported Peripherals:
 WIP Peripherals:
 - GPIO (Interrupt)
 - UART (Interrupt)
-- ADC (Poll/Interrupt)
+- ADC (Interrupt)
 - I2C (Interrupt)
 - IR (Poll)
 - PWM (Poll/Interrupt)

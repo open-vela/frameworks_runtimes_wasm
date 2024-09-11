@@ -15,7 +15,6 @@
  */
 
 #include "bflb_gpio.h"
-
 void board_init(void) { }
 
 void board_adc_gpio_init()
@@ -49,4 +48,4 @@ void board_adc_gpio_init()
     bflb_gpio_init(gpio, GPIO_PIN_28, GPIO_ANALOG | GPIO_SMT_EN | GPIO_DRV_0);
 }
 
-#include "../../bouffalo_sdk/examples/peripherals/adc/adc_poll/main.c"
+#include "../../bouffalo_sdk/examples/peripherals/adc/adc_poll_diff_mode/main.c"
