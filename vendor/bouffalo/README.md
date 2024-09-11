@@ -45,6 +45,7 @@ Currently, there are several examples:
 - `ir_nec`: This example demonstrates how to use bouffalo SDK 2.0 API to recieve data from ir by NEC protocol.
 - `ir_rc5`: This example demonstrates how to use bouffalo SDK 2.0 API to recieve data from ir by RC5 protocol.
 - `ir_swm`: This example demonstrates how to use bouffalo SDK 2.0 API to recieve data from ir by software mode.
+- `ir_tx_dma`: This example demonstrates how to use bouffalo SDK 2.0 API to transfer data from ir by DMA mode.
 - `gpio_interrupt`: This example demonstrates how to use bouffalo SDK 2.0 API to set GPIO pin as input and trigger interrupt when the pin is high.
 - `gpio_output`: This example demonstrates how to use bouffalo SDK 2.0 API to set GPIO pin as output and toggle it.
 - `gpio_output_raw`: This example demonstrates how to use raw register access to control GPIO pins, used for debugging register access issues.
