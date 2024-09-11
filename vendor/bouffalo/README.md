@@ -43,6 +43,7 @@ Currently, there are several examples:
 - `i2c_10_bit`: This example demonstrates how to use bouffalo SDK 2.0 API to write data to i2c by polling mode.
 - `i2c_eeprom`: This example demonstrates how to use bouffalo SDK 2.0 API to read/write data from/to i2c by polling mode.
 - `ir_nec`: This example demonstrates how to use bouffalo SDK 2.0 API to recieve data from ir by NEC protocol.
+- `ir_rc5`: This example demonstrates how to use bouffalo SDK 2.0 API to recieve data from ir by RC5 protocol.
 - `gpio_interrupt`: This example demonstrates how to use bouffalo SDK 2.0 API to set GPIO pin as input and trigger interrupt when the pin is high.
 - `gpio_output`: This example demonstrates how to use bouffalo SDK 2.0 API to set GPIO pin as output and toggle it.
 - `gpio_output_raw`: This example demonstrates how to use raw register access to control GPIO pins, used for debugging register access issues.
