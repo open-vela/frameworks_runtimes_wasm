@@ -90,6 +90,7 @@ list(APPEND DRIVER_SRC ${BOUFFALO_SDK_PATH}/drivers/lhal/src/bflb_i2c.c)
 list(APPEND DRIVER_SRC ${BOUFFALO_SDK_PATH}/drivers/lhal/src/bflb_i2s.c)
 list(APPEND DRIVER_SRC ${BOUFFALO_SDK_PATH}/drivers/lhal/src/bflb_ir.c)
 list(APPEND DRIVER_SRC ${BOUFFALO_SDK_PATH}/drivers/lhal/src/bflb_spi.c)
+list(APPEND DRIVER_SRC ${BOUFFALO_SDK_PATH}/drivers/lhal/src/bflb_pwm_v2.c)
 list(APPEND DRIVER_SRC src/time.c)
 
 # Essential global flags to build wasm application

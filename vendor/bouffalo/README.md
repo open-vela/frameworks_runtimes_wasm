@@ -51,6 +51,10 @@ Currently, there are several examples:
 - `gpio_output_raw`: This example demonstrates how to use raw register access to control GPIO pins, used for debugging register access issues.
 - `uart_fifo_interrupt`: This example demonstrates how to read and write data from/to UART using interrupt mode.
 - `uart_poll`: This example demonstrates how to use bouffalo SDK 2.0 API to read and write data from/to UART by polling mode.
+- `pwm_all_channels`: This example demonstrates how to output PWM signal on all channels.
+- `pwm_basic`: This example demonstrates how to output PWM signal on a single channel.
+- `pwm_config_channel`: This example demonstrates how to output PWM signal on channels configured independently.
+- `pwm_deadtime`: This example demonstrates how to set deadtime of PWM.
 
 # Configuration
 
@@ -72,11 +76,12 @@ Supported Peripherals:
 - ADC (Poll)
 - I2C (Poll)
 - IR (Poll)
+- PWM (Poll)
 
 WIP Peripherals:
 - GPIO (Interrupt)
 - UART (Interrupt)
 - ADC (Interrupt)
 - I2C (Interrupt)
-- PWM (Poll/Interrupt)
+- PWM (Interrupt)
 - SPI (Poll/Interrupt)
