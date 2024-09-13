@@ -55,6 +55,7 @@ Currently, there are several examples:
 - `pwm_basic`: This example demonstrates how to output PWM signal on a single channel.
 - `pwm_config_channel`: This example demonstrates how to output PWM signal on channels configured independently.
 - `pwm_deadtime`: This example demonstrates how to set deadtime of PWM.
+- `spi_poll`: This example demonstrates how to use bouffalo SDK 2.0 API to send/recieve data with SPI by polling.
 
 # Configuration
 
@@ -77,6 +78,7 @@ Supported Peripherals:
 - I2C (Poll)
 - IR (Poll)
 - PWM (Poll)
+- SPI (Poll)
 
 WIP Peripherals:
 - GPIO (Interrupt)
@@ -84,4 +86,4 @@ WIP Peripherals:
 - ADC (Interrupt)
 - I2C (Interrupt)
 - PWM (Interrupt)
-- SPI (Poll/Interrupt)
+- SPI (Interrupt)
