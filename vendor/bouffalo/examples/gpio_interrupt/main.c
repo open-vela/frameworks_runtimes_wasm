@@ -16,6 +16,8 @@
 
 #include "bflb_gpio.h"
 
+#include <vela/irq.h>
+
 struct bflb_device_s* gpio;
 static int i = 0;
 
@@ -25,21 +27,33 @@ void gpio_isr(int irq, void* arg)
     if (intstatus) {
         bflb_gpio_int_clear(gpio, GPIO_PIN_28);
     }
+    printf("gpio_isr callback called, the gpio interrupt was triggered %d times!!\r\n", ++i);
+    bflb_irq_enable(gpio->irq_num);
 }
 
 int main(void)
 {
-    gpio = bflb_device_get_by_name("gpio");
-    printf("gpio interrupt\r\n");
+    int i_time = 0;
+    irq_initialize();
 
-    bflb_gpio_int_init(gpio, GPIO_PIN_28, GPIO_INT_TRIG_MODE_SYNC_HIGH_LEVEL);
+    gpio = bflb_device_get_by_name("gpio");
+    printf("gpio interrupt, You have 10 seconds to trigger the interrupt\r\n");
+
+    bflb_gpio_int_init(gpio, GPIO_PIN_28, GPIO_INT_TRIG_MODE_SYNC_FALLING_EDGE);
     bflb_gpio_int_mask(gpio, GPIO_PIN_28, false);
 
     bflb_irq_attach(gpio->irq_num, gpio_isr, gpio);
     bflb_irq_enable(gpio->irq_num);
 
-    while (1) {
-        printf("GPIO Interrupt Count: %d\r\n", i);
+    while (i_time < 5) {
         bflb_mtimer_delay_ms(2000);
+        i_time++;
     }
+
+    printf("Interrupt trigger time ended and then goto irq_uninitialize\r\n");
+    bflb_irq_disable(gpio->irq_num);
+    irq_uninitialize();
+
+    printf("irq_uninitialize end !!!\r\n");
+    return 0;
 }
