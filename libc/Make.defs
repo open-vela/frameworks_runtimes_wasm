@@ -15,5 +15,5 @@
 #
 
 ifneq ($(CONFIG_WASM_LIBC),)
-CONFIGURED_APPS += $(APPDIR)/frameworks/wasm/libc
+CONFIGURED_APPS += $(APPDIR)/frameworks/runtimes/wasm/libc
 endif # CONFIG_WASM_LIBC

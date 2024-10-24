@@ -14,4 +14,4 @@
 # limitations under the License.
 #
 
-include $(wildcard $(APPDIR)/frameworks/wasm/*/Make.defs)
+include $(wildcard $(APPDIR)/frameworks/runtimes/wasm/*/Make.defs)
