@@ -15,5 +15,5 @@
 #
 
 ifneq ($(CONFIG_WASM_MEMORY_OPERATIONS),)
-CONFIGURED_APPS += $(APPDIR)/frameworks/wasm/memory
+CONFIGURED_APPS += $(APPDIR)/frameworks/runtimes/wasm/memory
 endif # CONFIG_WASM_MEMORY_OPERATIONS

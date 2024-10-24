@@ -1,5 +1,5 @@
 ############################################################################
-# apps/frameworks/wasm/chre/Make.defs
+# apps/frameworks/runtimes/wasm/chre/Make.defs
 #
 # Licensed to the Apache Software Foundation (ASF) under one or more
 # contributor license agreements.  See the NOTICE file distributed with
@@ -19,5 +19,5 @@
 ############################################################################
 
 ifneq ($(CONFIG_CHRE_WASM),)
-CONFIGURED_APPS += $(APPDIR)/frameworks/wasm/chre
+CONFIGURED_APPS += $(APPDIR)/frameworks/runtimes/wasm/chre
 endif
