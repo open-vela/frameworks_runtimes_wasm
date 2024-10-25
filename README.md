@@ -19,6 +19,7 @@ The Vela Wasm Framework provides extra modules and SDKs to build WebAssembly app
 * `chre`: This module provides the function from Context Hub Runtime Environment to Wasm runtime
 * `libc`: The C standard library for Wasm
 * `memory`: Memory aceess management between wasm and native code
+* `test`: Unit test cases for each module
 * `vela-sysroot`: A collection of extra header files to build WebAssembly applications
 * `vendor`: The Wasm application SDKs for 3rd party chip vendor
 
