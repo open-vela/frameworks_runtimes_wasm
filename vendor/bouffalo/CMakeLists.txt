@@ -114,7 +114,8 @@ add_library(driver ${DRIVER_SRC})
 #     name (str): The name of the WebAssembly application.
 #     SRC (list): List of source files for the application.
 
-function(add_wasm_application name SRC)
+function(add_wasm_application name)
+    set(SRC ${ARGN})
     add_executable(${name} ${SRC})
     set_target_properties(${name} PROPERTIES SUFFIX .wasm)
     target_link_libraries(${name} driver)
