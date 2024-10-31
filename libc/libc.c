@@ -18,6 +18,7 @@
 #include <sys/param.h>
 #include <sys/types.h>
 #include <time.h>
+#include <unistd.h>
 
 #include "wasm_export.h"
 
@@ -74,6 +75,21 @@ int nanosleep_wrapper(wasm_exec_env_t exec_env, const struct wasm_timespec* req,
 }
 
 /**
+ * @brief Wrapper function for usleep system call.
+ *
+ * This function takes a `useconds_t` value for the requested sleep duration in microseconds.
+ * It calls the standard `usleep` function.
+ *
+ * @param exec_env The execution environment.
+ * @param usec The number of microseconds to sleep.
+ * @return 0 on success, or -1 on failure (with errno set to indicate the error).
+ */
+int usleep_wrapper(wasm_exec_env_t exec_env, useconds_t usec)
+{
+    return usleep(usec);
+}
+
+/**
  * @brief Array of NativeSymbol structures for exporting WASM APIs.
  *
  * This array defines the native symbols that are exported for use in WebAssembly environments.
@@ -86,6 +102,7 @@ int nanosleep_wrapper(wasm_exec_env_t exec_env, const struct wasm_timespec* req,
 
 static NativeSymbol g_libc_symbols[] = {
     EXPORT_WASM_API_WITH_SIG2(nanosleep, "(**)i"),
+    EXPORT_WASM_API_WITH_SIG2(usleep, "(i)i"),
 };
 
 /* Register module, this function is called by the WAMR runtime */

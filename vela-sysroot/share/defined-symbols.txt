@@ -41,6 +41,7 @@ isxdigit
 tolower
 toupper
 isalnum
+usleep
 pthread_create
 pthread_join
 pthread_detach
