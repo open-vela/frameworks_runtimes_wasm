@@ -19,3 +19,5 @@
 #include <stdint.h>
 
 typedef uint32_t useconds_t;
+
+#define NULL ((void*)0)
