@@ -14,17 +14,22 @@
  * limitations under the License.
  */
 
+#include <vela/irq.h>
+
 #include "bflb_gpio.h"
+#include "bflb_mtimer.h"
+#include "bflb_uart.h"
+#include "board.h"
+
+struct bflb_device_s* uartx;
+static int i = 0;
+static uint8_t uart_txbuf[128] = { 0 };
 
 /* This macro is required by original BFLB SDK's example code,
  * it defines the UART port name used in the example.
  */
 
 #define DEFAULT_TEST_UART "uart1"
-
-/* Stub function that is needed by original BFLB SDK's example code */
-
-void board_init(void) { }
 
 /* Customized UART initialization function, called by BFLB SDK's example code */
 
@@ -39,4 +44,78 @@ int board_uartx_gpio_init(void)
     return 0;
 }
 
-#include "../../bouffalo_sdk/examples/peripherals/uart/uart_fifo_interrupt/main.c"
+void uart_isr(int irq, void* arg)
+{
+    uint32_t intstatus = bflb_uart_get_intstatus(uartx);
+
+    if (intstatus & UART_INTSTS_RX_FIFO) {
+        printf("rx fifo\r\n");
+        while (bflb_uart_rxavailable(uartx)) {
+            printf("0x%02x\r\n", bflb_uart_getchar(uartx));
+        }
+        bflb_uart_feature_control(uartx, UART_CMD_SET_RTS_VALUE, 1);
+    }
+    if (intstatus & UART_INTSTS_RTO) {
+        printf("rto\r\n");
+        while (bflb_uart_rxavailable(uartx)) {
+            printf("0x%02x\r\n", bflb_uart_getchar(uartx));
+        }
+        bflb_uart_int_clear(uartx, UART_INTCLR_RTO);
+    }
+    if (intstatus & UART_INTSTS_TX_FIFO) {
+        printf("tx fifo\r\n");
+        for (uint8_t i = 0; i < 27; i++) {
+            bflb_uart_putchar(uartx, uart_txbuf[i]);
+        }
+        bflb_uart_txint_mask(uartx, true);
+    }
+
+    printf("uart_isr callback called, the uart interrupt was triggered %d times!!\r\n", ++i);
+    bflb_irq_enable(uartx->irq_num);
+}
+
+int main(void)
+{
+    int i_time = 0;
+
+    printf("Initialize IRQ for WASM environment\r\n");
+    irq_initialize();
+
+    board_uartx_gpio_init();
+
+    uartx = bflb_device_get_by_name(DEFAULT_TEST_UART);
+
+    for (uint8_t i = 0; i < 128; i++) {
+        uart_txbuf[i] = i;
+    }
+
+    printf("uart interrupt, You have 20 seconds to trigger the interrupt\r\n");
+
+    struct bflb_uart_config_s cfg;
+
+    cfg.baudrate = 2000000;
+    cfg.data_bits = UART_DATA_BITS_8;
+    cfg.stop_bits = UART_STOP_BITS_1;
+    cfg.parity = UART_PARITY_NONE;
+    cfg.flow_ctrl = 0;
+    cfg.tx_fifo_threshold = 7;
+    cfg.rx_fifo_threshold = 7;
+    bflb_uart_init(uartx, &cfg);
+
+    bflb_uart_txint_mask(uartx, false);
+    bflb_uart_rxint_mask(uartx, false);
+    bflb_irq_attach(uartx->irq_num, uart_isr, NULL);
+    bflb_irq_enable(uartx->irq_num);
+
+    while (i_time < 10) {
+        bflb_mtimer_delay_ms(2000);
+        i_time++;
+    }
+
+    printf("Interrupt trigger time ended and then goto irq_uninitialize\r\n");
+    bflb_irq_disable(uartx->irq_num);
+    irq_uninitialize();
+    printf("irq_uninitialize end !!!\r\n");
+
+    return 0;
+}
