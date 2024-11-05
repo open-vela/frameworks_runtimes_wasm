@@ -22,13 +22,14 @@ Vela Wasm 框架提供了额外的模块和 SDK 来构建 WebAssembly 应用程�
 * `vela-sysroot`: 用于构建 WebAssembly 应用程序的额外头文件集合
 * `vendor`: 第三方芯片供应商的 Wasm 应用程序 SDK
 
-# 使用
+# 如何使用
 
 ## Wasm 运行时的功能模块
 
-目前仅支持 WAMR（WebAssembly Micro Runtime）。要使用功能模块，您需要首先在 menuconfig 中启用 WAMR，然后在相应的子菜单中启用 `WASM_LIBC`（libc）或 `WASM_MEMORY_OPERATIONS`（内存）。
-
-然后，libc 或 memory 的功能将在 `iwasm` 命令行工具中可用，并可以直接在 Wasm 应用程序中使用。
+目前仅支持 WAMR（WebAssembly Micro Runtime），您如果要使用该功能模块:
+1. 在 menuconfig 中启用 WAMR。
+2. 在相应的子菜单中启用 `WASM_LIBC`（libc）或 `WASM_MEMORY_OPERATIONS`（内存）。
+3. libc 或 memory 的功能将在 `iwasm` 命令行工具中可用，并可以直接在 Wasm 应用程序中使用。
 
 ## 使用 SDK 构建 Wasm 应用程序
 
