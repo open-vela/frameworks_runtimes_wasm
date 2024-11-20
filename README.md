@@ -1,10 +1,10 @@
-# Introduction
+# # Wasm Module
 
-[English|[简体中文](./README_zh-cn.md)]
+[English | [简体中文](./README_zh-cn.md)]
 
-The Vela Wasm Framework provides extra modules and SDKs to build WebAssembly applications.
+The openvela Wasm framework provides additional modules and SDKs to build `WebAssembly` applications.
 
-# Project Structure
+## Project Structure
 
 ```tree
 ├── chre
@@ -16,20 +16,24 @@ The Vela Wasm Framework provides extra modules and SDKs to build WebAssembly app
 └── README_zh-cn.md
 ```
 
-* `chre`: This module provides the function from Context Hub Runtime Environment to Wasm runtime
-* `libc`: The C standard library for Wasm
-* `memory`: Memory aceess management between wasm and native code
-* `vela-sysroot`: A collection of extra header files to build WebAssembly applications
-* `vendor`: The Wasm application SDKs for 3rd party chip vendor
+* `chre`: This module provides functionality from the Context Hub Runtime Environment to the Wasm runtime.
+* `libc`: C standard library for Wasm.
+* `memory`: Memory access management between Wasm and native code.
+* `vela-sysroot`: A collection of additional header files for building WebAssembly applications.
+* `vendor`: Wasm application SDKs for third-party chip vendors.
 
-# Usage
 
-## Function module for Wasm runtime
+## How to use
 
-Only WAMR (WebAssembly Micro Runtime) is supported now. To use the function module, you need to enable WAMR firstly in menuconfig, and then enable `WASM_LIBC` (libc) or `WASM_MEMORY_OPERATIONS` (memory) in the corresponding submenu.
+### Wasm runtime function module
 
-And then the function from libc or memory will be available in `iwasm` command line tool, and can be used directly in Wasm applications.
+Currently only WAMR (WebAssembly Micro Runtime) is supported. If you want to use this function module:
+1. Enable `WAMR` in `menuconfig`.
 
-## Build Wasm application by SDKs
+2. Enable `WASM_LIBC` (libc) or `WASM_MEMORY_OPERATIONS` (memory) in the corresponding submenu.
 
-The `vendor` directory provides a collection of SDKs for 3rd party chip vendors, only bouffalo lab's BL616 is supported now. To build an applicaiton using the SDK, you can refer to the following documntation: [BL616 SDK](./vendor/bouffalo/README.md)
+3. The functions of libc or memory are available in the `iwasm` command line tool and can be used directly in Wasm applications.
+
+### Build Wasm applications using SDK
+
+The `vendor` directory provides a collection of SDKs for third-party chip vendors. Currently, only BL616 from `bouffalo lab` is supported. To build applications using the SDK, you can refer to the following document: [BL616 SDK](./vendor/bouffalo/README.md)
