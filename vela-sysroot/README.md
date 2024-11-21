@@ -1,6 +1,6 @@
 # Overview
 
-This folder contains the sysroot for the Vela Wasm Application Framework.
+This folder contains the sysroot for the openvela Wasm Application Framework.
 
 Generally, a sysroot for WebAssembly is a minimum set of files and directories that are required to run an application or library compiled with WASI-SDK. This includes standard libraries and other necessary components.
 
