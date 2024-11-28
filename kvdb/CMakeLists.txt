@@ -18,7 +18,7 @@
 #
 # ##############################################################################
 
-if(CONFIG_KVDB AND CONFIG_INTERPRETERS_WAMR_EXTERNAL_MODULE_REGISTRY)
+if(CONFIG_KVDB AND CONFIG_INTERPRETERS_WAMR)
 
   target_sources(apps PRIVATE kvdb.c)
   # register WAMR mod
