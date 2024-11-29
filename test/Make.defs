@@ -14,4 +14,6 @@
 # limitations under the License.
 #
 
+ifneq ($(CONFIG_INTERPRETERS_WAMR),)
 CONFIGURED_APPS += $(APPDIR)/frameworks/runtimes/wasm/test
+endif
