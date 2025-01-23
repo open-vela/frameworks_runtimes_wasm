@@ -20,8 +20,17 @@
 
 if (CONFIG_CHRE_WASM)
   set(CXXSRCS
-    ble_wrapper.cc
-    chre.cc)
+     audio_wrapper.cc
+     ble_wrapper.cc
+     chre.cc
+     event_wrapper.cc
+     gnss_wrapper.cc
+     re_wrapper.cc
+     sensor_wrapper.cc
+     user_settings_wrapper.cc
+     version_wrapper.cc
+     wifi_wrapper.cc
+     wwan_wrapper.cc)
 
   target_sources(apps PRIVATE ${CXXSRCS})
   target_include_directories(apps PRIVATE ${NUTTX_APPS_DIR}/external/android/system/chre/chre/chre_api/include/chre_api)

@@ -17,6 +17,15 @@
 #ifndef _CHRE_WRAPPER_H_
 #define _CHRE_WRAPPER_H_
 
+#include "audio_wrapper.h"
 #include "ble_wrapper.h"
+#include "event_wrapper.h"
+#include "gnss_wrapper.h"
+#include "re_wrapper.h"
+#include "sensor_wrapper.h"
+#include "user_settings_wrapper.h"
+#include "version_wrapper.h"
+#include "wifi_wrapper.h"
+#include "wwan_wrapper.h"
 
 #endif
