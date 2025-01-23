@@ -22,8 +22,17 @@ include $(APPDIR)/Make.defs
 
 ifneq ($(CONFIG_CHRE_WASM),)
 CXXEXT = .cc
-CXXSRCS  +=  chre.cc
+CXXSRCS  +=  audio_wrapper.cc
 CXXSRCS  +=  ble_wrapper.cc
+CXXSRCS  +=  chre.cc
+CXXSRCS  +=  event_wrapper.cc
+CXXSRCS  +=  gnss_wrapper.cc
+CXXSRCS  +=  re_wrapper.cc
+CXXSRCS  +=  sensor_wrapper.cc
+CXXSRCS  +=  user_settings_wrapper.cc
+CXXSRCS  +=  version_wrapper.cc
+CXXSRCS  +=  wifi_wrapper.cc
+CXXSRCS  +=  wwan_wrapper.cc
 endif
 
 # Set WAMR_MODULE_NAME and include Module.mk to add this module to the list of

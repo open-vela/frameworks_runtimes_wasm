@@ -14,29 +14,24 @@
  * limitations under the License.
  */
 
-#include <sys/param.h>
+#ifndef _AUDIO_WRAPPER_H_
+#define _AUDIO_WRAPPER_H_
 
-#include "./include/chre_wrapper.h"
+#include "chre/audio.h"
+#include "wasm_export.h"
 
-#ifdef __cplusplus
 extern "C" {
-#endif
 
-#define REG_CHRE_NATIVE_FUNC(func_name, signature)               \
-    {                                                            \
-#func_name, (void*)(func_name##Wrapper), signature, NULL \
-    }
+bool chreAudioGetSourceWrapper(wasm_exec_env_t execEnv,
+    uint32_t handle, chreAudioSource* audioSource);
 
-static NativeSymbol g_chre_symbols[] = {
-#include "./include/chre.inl"
-};
+bool chreAudioConfigureSourceWrapper(wasm_exec_env_t execEnv,
+    uint32_t handle, bool enable,
+    uint64_t bufferDuration,
+    uint64_t deliveryInterval);
 
-int wamr_module_chre_register(void)
-{
-    return wasm_runtime_register_natives("env", g_chre_symbols,
-        nitems(g_chre_symbols));
+bool chreAudioGetStatusWrapper(wasm_exec_env_t execEnv, uint32_t handle,
+    chreAudioSourceStatus* status);
 }
 
-#ifdef __cplusplus
-}
 #endif

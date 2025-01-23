@@ -16,17 +16,17 @@
 
 #include "include/ble_wrapper.h"
 
-#ifdef __cplusplus
 extern "C" {
-#endif
 
 uint32_t chreBleGetCapabilitiesWrapper(wasm_exec_env_t execEnv)
 {
+    (void)execEnv;
     return chreBleGetCapabilities();
 }
 
 uint32_t chreBleGetFilterCapabilitiesWrapper(wasm_exec_env_t execEnv)
 {
+    (void)execEnv;
     return chreBleGetFilterCapabilities();
 }
 
@@ -39,22 +39,16 @@ bool chreBleStartScanAsyncWrapper(wasm_exec_env_t execEnv, enum chreBleScanMode 
     }
     nativeFilter.rssiThreshold = filter->rssiThreshold;
     nativeFilter.scanFilterCount = filter->scanFilterCount;
-    wasm_module_inst_t wasmModuleInst = wasm_runtime_get_module_inst(execEnv);
-    if (!wasmModuleInst) {
-        goto fail;
-    }
+    wasm_module_inst_t wasmModuleInst = get_module_inst(execEnv);
+
     nativeFilter.scanFilters = static_cast<chreBleGenericFilter*>(
         wasm_runtime_addr_app_to_native(wasmModuleInst, reinterpret_cast<uint64_t>(filter->scanFilters)));
     return chreBleStartScanAsync(mode, reportDelayMs, &nativeFilter);
-fail:
-    return false;
 }
 
 bool chreBleStopScanAsyncWrapper(wasm_exec_env_t execEnv)
 {
+    (void)execEnv;
     return chreBleStopScanAsync();
 }
-
-#ifdef __cplusplus
 }
-#endif

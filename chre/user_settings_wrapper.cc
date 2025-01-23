@@ -14,29 +14,19 @@
  * limitations under the License.
  */
 
-#include <sys/param.h>
+#include "include/user_settings_wrapper.h"
 
-#include "./include/chre_wrapper.h"
-
-#ifdef __cplusplus
 extern "C" {
-#endif
 
-#define REG_CHRE_NATIVE_FUNC(func_name, signature)               \
-    {                                                            \
-#func_name, (void*)(func_name##Wrapper), signature, NULL \
-    }
-
-static NativeSymbol g_chre_symbols[] = {
-#include "./include/chre.inl"
-};
-
-int wamr_module_chre_register(void)
+int8_t chreUserSettingGetStateWrapper(wasm_exec_env_t execEnv, uint8_t setting)
 {
-    return wasm_runtime_register_natives("env", g_chre_symbols,
-        nitems(g_chre_symbols));
+    (void)execEnv;
+    return chreUserSettingGetState(setting);
 }
 
-#ifdef __cplusplus
+void chreUserSettingConfigureEventsWrapper(wasm_exec_env_t execEnv, uint8_t setting, bool enable)
+{
+    (void)execEnv;
+    return chreUserSettingConfigureEvents(setting, enable);
 }
-#endif
+}

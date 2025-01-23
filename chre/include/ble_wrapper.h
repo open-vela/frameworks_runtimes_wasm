@@ -20,9 +20,7 @@
 #include "chre/ble.h"
 #include "wasm_export.h"
 
-#ifdef __cplusplus
 extern "C" {
-#endif
 
 uint32_t chreBleGetCapabilitiesWrapper(wasm_exec_env_t execEnv);
 
@@ -32,9 +30,6 @@ bool chreBleStartScanAsyncWrapper(wasm_exec_env_t execEnv, enum chreBleScanMode 
     uint32_t reportDelayMs, const chreBleScanFilter* filter);
 
 bool chreBleStopScanAsyncWrapper(wasm_exec_env_t execEnv);
-
-#ifdef __cplusplus
 }
-#endif
 
 #endif

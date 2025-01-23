@@ -14,29 +14,19 @@
  * limitations under the License.
  */
 
-#include <sys/param.h>
+#ifndef _VERSION_WRAPPER_H_
+#define _VERSION_WRAPPER_H_
 
-#include "./include/chre_wrapper.h"
+#include "chre/version.h"
+#include "wasm_export.h"
 
-#ifdef __cplusplus
 extern "C" {
-#endif
 
-#define REG_CHRE_NATIVE_FUNC(func_name, signature)               \
-    {                                                            \
-#func_name, (void*)(func_name##Wrapper), signature, NULL \
-    }
+uint32_t chreGetApiVersionWrapper(wasm_exec_env_t execEnv);
 
-static NativeSymbol g_chre_symbols[] = {
-#include "./include/chre.inl"
-};
+uint32_t chreGetVersionWrapper(wasm_exec_env_t execEnv);
 
-int wamr_module_chre_register(void)
-{
-    return wasm_runtime_register_natives("env", g_chre_symbols,
-        nitems(g_chre_symbols));
+uint64_t chreGetPlatformIdWrapper(wasm_exec_env_t execEnv);
 }
 
-#ifdef __cplusplus
-}
 #endif
