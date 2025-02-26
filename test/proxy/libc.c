@@ -17,8 +17,8 @@
 #include <ctype.h>
 #include <stdint.h>
 #include <stdio.h>
-#include <string.h>
 #include <stdlib.h>
+#include <string.h>
 #include <time.h>
 
 int memcmp_proxy(const void* s1, const void* s2, size_t n)
@@ -144,4 +144,49 @@ int isalnum_proxy(int c)
 int nanosleep_proxy(const struct timespec* req, struct timespec* rem)
 {
     return nanosleep(req, rem);
+}
+
+void* memcpy_proxy(void* dest, const void* src, size_t n)
+{
+    return memcpy(dest, src, n);
+}
+
+void* memmove_proxy(void* dest, const void* src, size_t count)
+{
+    return memmove(dest, src, count);
+}
+
+void* memset_proxy(void* s, int c, size_t n)
+{
+    return memset(s, c, n);
+}
+
+char* strchr_proxy(const char* s, int c)
+{
+    return strchr(s, c);
+}
+
+int strcmp_proxy(const char* s1, const char* s2)
+{
+    return strcmp(s1, s2);
+}
+
+int strncmp_proxy(const char* s1, const char* s2, size_t n)
+{
+    return strncmp(s1, s2, n);
+}
+
+char* strcpy_proxy(char* dest, const char* src)
+{
+    return strcpy(dest, src);
+}
+
+char* strncpy_proxy(char* dest, const char* src, size_t n)
+{
+    return strncpy(dest, src, n);
+}
+
+size_t strlen_proxy(const char* s)
+{
+    return strlen(s);
 }
