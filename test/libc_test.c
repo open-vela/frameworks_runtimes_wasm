@@ -34,38 +34,6 @@ extern bool wamr_module_libc_register(void);
 static wasm_module_t g_module;
 static wasm_module_inst_t g_module_instance;
 
-/* Define the test case function */
-static void test_wasm_instance(void** state)
-{
-    /* Initialize the WAMR runtime environment */
-    if (!wasm_runtime_init()) {
-        return;
-    }
-
-    /* Register libc module into runtime */
-    wamr_module_libc_register();
-
-    /* Load the WASM module from the buffer */
-    g_module = wasm_runtime_load(generated_libc_wasm, generated_libc_wasm_len, NULL, 0);
-    if (!g_module) {
-        goto cleanup_runtime;
-    }
-
-    /* Instantiate the module */
-    g_module_instance = wasm_runtime_instantiate(g_module, CONFIG_WASM_TEST_STACKSIZE, WASM_TEST_HEAPSIZE, NULL, 0);
-    if (!g_module_instance) {
-        goto cleanup_module;
-    }
-
-    return;
-
-cleanup_module:
-    wasm_runtime_unload(g_module);
-
-cleanup_runtime:
-    wasm_runtime_destroy();
-}
-
 /*
  * Calls a WASM function indirectly by its name.
  *
@@ -858,9 +826,38 @@ void test_wasm_nanosleep(void** state)
 
 int main(int argc, char** argv)
 {
+    unsigned char* libc_wasm;
+    int result = 0;
+
+    /* Initialize the WAMR runtime environment */
+    if (!wasm_runtime_init()) {
+        return -1;
+    }
+
+    /* Register libc module into runtime */
+    wamr_module_libc_register();
+
+    libc_wasm = (unsigned char*)malloc(generated_libc_wasm_len);
+    if (!libc_wasm) {
+        goto cleanup_runtime;
+    }
+
+    memcpy(libc_wasm, generated_libc_wasm, generated_libc_wasm_len);
+
+    /* Load the WASM module from the buffer */
+    g_module = wasm_runtime_load(libc_wasm, generated_libc_wasm_len, NULL, 0);
+    if (!g_module) {
+        goto cleanup_runtime;
+    }
+
+    /* Instantiate the module */
+    g_module_instance = wasm_runtime_instantiate(g_module, CONFIG_WASM_TEST_STACKSIZE, WASM_TEST_HEAPSIZE, NULL, 0);
+    if (!g_module_instance) {
+        goto cleanup_module;
+    }
+
     /* Run the tests */
     const struct CMUnitTest tests[] = {
-        cmocka_unit_test(test_wasm_instance),
         cmocka_unit_test(test_wasm_malloc),
         cmocka_unit_test(test_wasm_calloc),
         cmocka_unit_test(test_wasm_free),
@@ -886,11 +883,19 @@ int main(int argc, char** argv)
         cmocka_unit_test(test_wasm_isalnum),
         cmocka_unit_test(test_wasm_nanosleep),
     };
-    int result = cmocka_run_group_tests(tests, NULL, NULL);
+    result = cmocka_run_group_tests(tests, NULL, NULL);
 
-    if (g_module) {
-        wasm_runtime_unload(g_module);
-        wasm_runtime_destroy();
+    wasm_runtime_deinstantiate(g_module_instance);
+
+cleanup_module:
+    wasm_runtime_unload(g_module);
+
+cleanup_runtime:
+    if (libc_wasm) {
+        free(libc_wasm);
     }
+
+    wasm_runtime_destroy();
+
     return result;
 }
