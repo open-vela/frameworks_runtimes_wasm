@@ -153,16 +153,25 @@ def generate_functions(csv, out, lib):
 
     out.write(")\n{\n")
 
-    addrcov = False
-    for index in range(PARM1_INDEX, len(args)):
-      if '*' in args[index] or 'va_list' in args[index] or '...' in args[index]:
-        addrcov = True
-
-    if addrcov == False and '*' in args[RETTYPE_INDEX]:
-      addrcov = True
-
     out.write("  wasm_module_inst_t module_inst = get_module_inst(env);\n")
     out.write("  uintptr_t ret;\n")
+
+    is_addr = False
+    for index in range(PARM1_INDEX, len(args)):
+      if '*' in args[index]:
+        is_addr = True
+        continue
+      if 'va_list' in args[index] or '...' in args[index]:
+        is_addr = False
+        break
+
+    if is_addr:
+      out.write("  void *addr_app = addr_app_to_native((uintptr_t)NULL);\n")
+      for index in range(PARM1_INDEX, len(args)):
+        if '*' in args[index]:
+          out.write(f"  if ((void *)parm{index - PARM1_INDEX + 1} == addr_app)\n")
+          out.write(f"    parm{index - PARM1_INDEX + 1} = (uintptr_t)NULL;\n")
+          out.write("\n")
 
     if findex != 0:
       if 'scanf' in args[NAME_INDEX]:
