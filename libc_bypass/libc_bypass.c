@@ -398,6 +398,11 @@ void glue_free(wasm_exec_env_t env, uintptr_t parm1)
     wasm_module_inst_t module_inst = get_module_inst(env);
     uintptr_t ret = NULL;
     uintptr_t app_addr = NULL;
+    void* addr_app = addr_app_to_native((uintptr_t)NULL);
+    if ((void*)parm1 == addr_app) {
+        parm1 = (uintptr_t)NULL;
+    }
+
     /* Try to pop the original pointer from the map */
     if (parm1 != (uintptr_t)NULL) {
         app_addr = addr_native_to_app(parm1);

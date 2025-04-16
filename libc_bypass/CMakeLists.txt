@@ -1,5 +1,5 @@
 # ##############################################################################
-# CMakeLists.txt
+# frameworks/runtimes/wasm/libc_bypass/CMakeLists.txt
 #
 # Licensed to the Apache Software Foundation (ASF) under one or more contributor
 # license agreements.  See the NOTICE file distributed with this work for
@@ -28,7 +28,7 @@ if(CONFIG_WASM_LIBC_BYPASS)
     COMMAND ${NUTTX_APPS_DIR}/../frameworks/runtimes/wasm/tools/mkwamrglue.py
             -i ${NUTTX_DIR}/libs/libm/libm.csv -o libm_glue.c)
 
-  add_dependencies(apps_context gen_glue_sources)
+  add_dependencies(wamr gen_glue_sources)
 
   if(NOT EXISTS {CMAKE_CURRENT_BINARY_DIR}/libc_bypass.c)
     file(
@@ -37,7 +37,7 @@ if(CONFIG_WASM_LIBC_BYPASS)
   endif()
 
   # register WAMR mod
-  target_sources(apps PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/libc_bypass.c)
+  target_sources(wamr PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/libc_bypass.c)
   nuttx_add_wamrmod(MODS libc_bypass)
 
 endif()
