@@ -1,0 +1,35 @@
+#
+# For a description of the syntax of this configuration file,
+# see the file kconfig-language.txt in the NuttX tools repository.
+#
+
+config WASM_LWAC
+	tristate "LWAC"
+	default n
+	depends on INTERPRETERS_WAMR
+	---help---
+		Enable the LWAC (Lightweight WebAssembly Application Container)
+
+if WASM_LWAC
+
+config WASM_LWAC_PRIORITY
+	int "LWAC task priority"
+	default 100
+
+config WASM_LWAC_STACKSIZE
+	int "LWAC stack size"
+	default DEFAULT_TASK_STACKSIZE
+
+config WASM_LWAC_APP_DEFAULT_STACK_SIZE
+	int "Default stack size for WASM applications"
+	default 2048
+	---help---
+		Default stack size allocated for WebAssembly applications
+
+config WASM_LWAC_APP_DEFAULT_HEAP_SIZE
+	int "Default heap size for WASM applications"
+	default 4096
+	---help---
+		Default heap size allocated for WebAssembly applications
+
+endif
