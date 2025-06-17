@@ -25,9 +25,12 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <syslog.h>
 #include <sys/param.h>
 #include <sys/types.h>
 #include "gdbus.h"
+
+#define DBUS_PENDING_CALL_IDX_MAX 64
 
 /****************************************************************************
  * Private Functions
@@ -432,42 +435,89 @@ void glue_dbus_set_error(wasm_exec_env_t env, uintptr_t parm1,
 
 #endif /* GLUE_FUNCTION_dbus_set_error */
 
-static wasm_exec_env_t dbus_env;
-static int dbus_handle_message_func_idx;
-static int dbus_free_func_idx;
+#ifndef GLUE_FUNCTION_dbus_connection_add_filter
+#define GLUE_FUNCTION_dbus_connection_add_filter
+
+typedef struct dbus_handle_message_call_idx {
+    int handle_message;
+    int free_func;
+    void* connection;
+    void* data;
+    wasm_exec_env_t dbus_env;
+} dbus_handle_message_call_idx;
+
+dbus_handle_message_call_idx handle_message_call_idx[DBUS_PENDING_CALL_IDX_MAX] = {
+    0
+};
 
 DBusHandlerResult dbus_handle_message_func_proxy(DBusConnection* conn,
     DBusMessage* msg,
     void* data)
 {
-    wasm_module_inst_t module_inst = get_module_inst(dbus_env);
+    wasm_module_inst_t module_inst;
+    wasm_exec_env_t dbus_env;
     uint32_t argv[3];
     DBusHandlerResult ret;
+    int i;
 
-    argv[0] = addr_native_to_app((void*)conn);
-    argv[1] = addr_native_to_app((void*)msg);
-    argv[2] = addr_native_to_app((void*)data);
+    if (data == NULL) {
+        return;
+    }
+
+    for (i = 0; i < DBUS_PENDING_CALL_IDX_MAX; i++) {
+        if (handle_message_call_idx[i].data == (void*)data) {
+            dbus_env = handle_message_call_idx[i].dbus_env;
+            module_inst = get_module_inst(dbus_env);
+            argv[0] = addr_native_to_app((void*)conn);
+            argv[1] = addr_native_to_app((void*)msg);
+            argv[2] = addr_native_to_app((void*)data);
+            break;
+        }
+    }
+
+    if (i == DBUS_PENDING_CALL_IDX_MAX) {
+        syslog(LOG_INFO, "The callback handle_message_func array is full");
+        return;
+    }
 
     ret = wasm_runtime_call_indirect_internal(
-              dbus_env, dbus_handle_message_func_idx,
+              dbus_env, handle_message_call_idx[i].handle_message,
               3, argv)
         ? argv[0]
         : 0;
     return ret;
 }
 
-void dbus_free_func_proxy(void* mem)
+void dbus_free_func_proxy(void* data)
 {
-    wasm_module_inst_t module_inst = get_module_inst(dbus_env);
+    wasm_module_inst_t module_inst;
+    wasm_exec_env_t dbus_env;
     uint32_t argv[1];
+    int i;
 
-    argv[0] = addr_native_to_app((void*)mem);
+    if (data == NULL) {
+        return;
+    }
 
-    wasm_runtime_call_indirect_internal(dbus_env, dbus_free_func_idx, 1, argv);
+    for (i = 0; i < DBUS_PENDING_CALL_IDX_MAX; i++) {
+        if (handle_message_call_idx[i].data == (void*)data) {
+            dbus_env = handle_message_call_idx[i].dbus_env;
+            module_inst = get_module_inst(dbus_env);
+            argv[0] = addr_native_to_app((void*)data);
+            break;
+        }
+    }
+
+    if (i == DBUS_PENDING_CALL_IDX_MAX) {
+        syslog(LOG_INFO, "The callback free_func array is full");
+        return;
+    }
+
+    wasm_runtime_call_indirect_internal(dbus_env,
+        handle_message_call_idx[i].free_func, 1, argv);
+
+    handle_message_call_idx[i].data = NULL;
 }
-
-#ifndef GLUE_FUNCTION_dbus_connection_add_filter
-#define GLUE_FUNCTION_dbus_connection_add_filter
 
 uintptr_t glue_dbus_connection_add_filter(wasm_exec_env_t env,
     uintptr_t parm1,
@@ -476,10 +526,18 @@ uintptr_t glue_dbus_connection_add_filter(wasm_exec_env_t env,
 {
     wasm_module_inst_t module_inst = get_module_inst(env);
     uintptr_t ret;
+    int i;
 
-    dbus_env = env;
-    dbus_handle_message_func_idx = parm2;
-    dbus_free_func_idx = parm4;
+    for (i = 0; i < DBUS_PENDING_CALL_IDX_MAX; i++) {
+        if (handle_message_call_idx[i].data == NULL) {
+            handle_message_call_idx[i].connection = (void*)parm1;
+            handle_message_call_idx[i].handle_message = parm2;
+            handle_message_call_idx[i].free_func = parm4;
+            handle_message_call_idx[i].data = (void*)parm3;
+            handle_message_call_idx[i].dbus_env = env;
+            break;
+        }
+    }
 
     ret = dbus_connection_add_filter((void*)parm1,
         dbus_handle_message_func_proxy,
@@ -491,23 +549,50 @@ uintptr_t glue_dbus_connection_add_filter(wasm_exec_env_t env,
 
 #ifndef GLUE_FUNCTION_dbus_connection_register_object_path
 #define GLUE_FUNCTION_dbus_connection_register_object_path
-static int generic_unregister_idx;
-static int generic_message_idx;
+typedef struct dbus_generic_message_call_idx {
+    int generic_message;
+    int generic_unregister;
+    void* connection;
+    void* data;
+    wasm_exec_env_t dbus_env;
+} dbus_generic_message_call_idx;
+
+dbus_generic_message_call_idx generic_message_call_idx[DBUS_PENDING_CALL_IDX_MAX] = {
+    0
+};
 
 static DBusHandlerResult generic_message_proxy(DBusConnection* connection,
     DBusMessage* message,
     void* user_data)
 {
-    wasm_module_inst_t module_inst = get_module_inst(dbus_env);
+    wasm_module_inst_t module_inst;
+    wasm_exec_env_t dbus_env;
     uint32_t argv[3];
     DBusHandlerResult ret;
+    int i;
 
-    argv[0] = addr_native_to_app((void*)connection);
-    argv[1] = addr_native_to_app((void*)message);
-    argv[2] = addr_native_to_app((void*)user_data);
+    if (connection == NULL) {
+        return;
+    }
+
+    for (i = 0; i < DBUS_PENDING_CALL_IDX_MAX; i++) {
+        if (generic_message_call_idx[i].connection == (void*)connection) {
+            dbus_env = generic_message_call_idx[i].dbus_env;
+            module_inst = get_module_inst(dbus_env);
+            argv[0] = addr_native_to_app((void*)connection);
+            argv[1] = addr_native_to_app((void*)message);
+            argv[2] = addr_native_to_app((void*)user_data);
+            break;
+        }
+    }
+
+    if (i == DBUS_PENDING_CALL_IDX_MAX) {
+        syslog(LOG_INFO, "The callback generic_message array is full");
+        return;
+    }
 
     ret = wasm_runtime_call_indirect_internal(dbus_env,
-              generic_message_idx,
+              generic_message_call_idx[i].generic_message,
               3,
               argv)
         ? argv[0]
@@ -519,16 +604,36 @@ static DBusHandlerResult generic_message_proxy(DBusConnection* connection,
 static void generic_unregister_proxy(DBusConnection* connection,
     void* user_data)
 {
-    wasm_module_inst_t module_inst = get_module_inst(dbus_env);
+    wasm_module_inst_t module_inst;
+    wasm_exec_env_t dbus_env;
     uint32_t argv[2];
+    int i;
 
-    argv[0] = addr_native_to_app((void*)connection);
-    argv[1] = addr_native_to_app((void*)user_data);
+    if (connection == NULL) {
+        return;
+    }
+
+    for (i = 0; i < DBUS_PENDING_CALL_IDX_MAX; i++) {
+        if (generic_message_call_idx[i].connection == (void*)connection) {
+            dbus_env = generic_message_call_idx[i].dbus_env;
+            module_inst = get_module_inst(dbus_env);
+            argv[0] = addr_native_to_app((void*)connection);
+            argv[1] = addr_native_to_app((void*)user_data);
+            break;
+        }
+    }
+
+    if (i == DBUS_PENDING_CALL_IDX_MAX) {
+        syslog(LOG_INFO, "The callback generic_unregister array is full");
+        return;
+    }
 
     wasm_runtime_call_indirect_internal(dbus_env,
-        generic_unregister_idx,
+        generic_message_call_idx[i].generic_unregister,
         2,
         argv);
+
+    generic_message_call_idx[i].connection = NULL;
 }
 
 static DBusObjectPathVTable generic_table = {
@@ -544,11 +649,19 @@ uintptr_t glue_dbus_connection_register_object_path(wasm_exec_env_t env,
 {
     wasm_module_inst_t module_inst = get_module_inst(env);
     uintptr_t ret;
+    int i;
     const DBusObjectPathVTable* table = (const DBusObjectPathVTable*)parm3;
 
-    generic_unregister_idx = table->unregister_function;
-    generic_message_idx = table->message_function;
-    dbus_env = env;
+    for (i = 0; i < DBUS_PENDING_CALL_IDX_MAX; i++) {
+        if (generic_message_call_idx[i].connection == NULL) {
+            generic_message_call_idx[i].connection = (void*)parm1;
+            generic_message_call_idx[i].generic_message = table->message_function;
+            generic_message_call_idx[i].generic_unregister = table->unregister_function;
+            generic_message_call_idx[i].data = (void*)parm4;
+            generic_message_call_idx[i].dbus_env = env;
+            break;
+        }
+    }
 
     ret = dbus_connection_register_object_path((DBusConnection*)parm1,
         (const char*)parm2,
@@ -560,17 +673,75 @@ uintptr_t glue_dbus_connection_register_object_path(wasm_exec_env_t env,
 
 #ifndef GLUE_FUNCTION_dbus_connection_remove_filter
 #define GLUE_FUNCTION_dbus_connection_remove_filter
+typedef struct dbus_connection_remove_call_idx {
+    int connection_remove;
+    void* connection;
+    void* data;
+    wasm_exec_env_t dbus_env;
+} dbus_connection_remove_call_idx;
+
+dbus_connection_remove_call_idx connection_remove_call_idx[DBUS_PENDING_CALL_IDX_MAX] = {
+    0
+};
+
+DBusHandlerResult dbus_connection_remove_func_proxy(DBusConnection* conn,
+    DBusMessage* msg,
+    void* data)
+{
+    wasm_module_inst_t module_inst;
+    wasm_exec_env_t dbus_env;
+    uint32_t argv[3];
+    DBusHandlerResult ret;
+    int i;
+
+    if (data == NULL) {
+        return;
+    }
+
+    for (i = 0; i < DBUS_PENDING_CALL_IDX_MAX; i++) {
+        if (connection_remove_call_idx[i].data == (void*)data) {
+            connection_remove_call_idx[i].dbus_env;
+            module_inst = get_module_inst(dbus_env);
+            argv[0] = addr_native_to_app((void*)conn);
+            argv[1] = addr_native_to_app((void*)msg);
+            argv[2] = addr_native_to_app((void*)data);
+            break;
+        }
+    }
+
+    if (i == DBUS_PENDING_CALL_IDX_MAX) {
+        syslog(LOG_INFO, "The callback connection_remove array is full");
+        return;
+    }
+
+    ret = wasm_runtime_call_indirect_internal(
+              dbus_env, connection_remove_call_idx[i].connection_remove,
+              3, argv)
+        ? argv[0]
+        : 0;
+
+    return ret;
+}
+
 void glue_dbus_connection_remove_filter(wasm_exec_env_t env, uintptr_t parm1,
     uintptr_t parm2, uintptr_t parm3)
 {
     wasm_module_inst_t module_inst = get_module_inst(env);
     uintptr_t ret;
+    int i;
 
-    dbus_env = env;
-    dbus_handle_message_func_idx = parm2;
+    for (i = 0; i < DBUS_PENDING_CALL_IDX_MAX; i++) {
+        if (connection_remove_call_idx[i].data == NULL) {
+            connection_remove_call_idx[i].connection = (void*)parm1;
+            connection_remove_call_idx[i].connection_remove = parm2;
+            connection_remove_call_idx[i].data = (void*)parm3;
+            connection_remove_call_idx[i].dbus_env = env;
+            break;
+        }
+    }
 
     dbus_connection_remove_filter((DBusConnection*)parm1,
-        dbus_handle_message_func_proxy,
+        dbus_connection_remove_func_proxy,
         (void*)parm3);
 }
 
@@ -579,21 +750,47 @@ void glue_dbus_connection_remove_filter(wasm_exec_env_t env, uintptr_t parm1,
 #ifndef GLUE_FUNCTION_dbus_connection_set_watch_functions
 #define GLUE_FUNCTION_dbus_connection_set_watch_functions
 
-static int dbus_add_watch_func_idx;
-static int dbus_remove_watch_func_idx;
-static int dbus_watch_toggled_func_idx;
-static int dbus_connection_set_watch_free_data_idx;
+typedef struct dbus_set_watch_func {
+    int add_watch_func_idx;
+    int remove_watch_func_idx;
+    int watch_toggled_func_idx;
+    int connection_set_watch_free_data_idx;
+    void* data;
+    wasm_exec_env_t dbus_env;
+} dbus_set_watch_func;
+
+dbus_set_watch_func set_watch_func[DBUS_PENDING_CALL_IDX_MAX] = {
+    0
+};
 
 dbus_bool_t dbus_add_watch_func_proxy(DBusWatch* watch, void* data)
 {
-    wasm_module_inst_t module_inst = get_module_inst(dbus_env);
+    wasm_module_inst_t module_inst;
+    wasm_exec_env_t dbus_env;
     uint32_t argv[2];
+    int i;
 
-    argv[0] = addr_native_to_app((void*)watch);
-    argv[1] = addr_native_to_app((void*)data);
+    if (data == NULL) {
+        return;
+    }
+
+    for (i = 0; i < DBUS_PENDING_CALL_IDX_MAX; i++) {
+        if (set_watch_func[i].data == (void*)data) {
+            dbus_env = set_watch_func[i].dbus_env;
+            module_inst = get_module_inst(dbus_env);
+            argv[0] = addr_native_to_app((void*)watch);
+            argv[1] = addr_native_to_app((void*)data);
+            break;
+        }
+    }
+
+    if (i == DBUS_PENDING_CALL_IDX_MAX) {
+        syslog(LOG_INFO, "The callback add_watch_func array is full");
+        return;
+    }
 
     return wasm_runtime_call_indirect_internal(dbus_env,
-               dbus_add_watch_func_idx,
+               set_watch_func[i].add_watch_func_idx,
                2, argv)
         ? argv[0]
         : 0;
@@ -601,44 +798,100 @@ dbus_bool_t dbus_add_watch_func_proxy(DBusWatch* watch, void* data)
 
 void dbus_remove_watch_func_proxy(DBusWatch* watch, void* data)
 {
-    wasm_module_inst_t module_inst = get_module_inst(dbus_env);
+    wasm_module_inst_t module_inst;
+    wasm_exec_env_t dbus_env;
     uint32_t argv[2];
+    int i;
 
-    argv[0] = addr_native_to_app((void*)watch);
-    argv[1] = addr_native_to_app((void*)data);
+    if (data == NULL) {
+        return;
+    }
+
+    for (i = 0; i < DBUS_PENDING_CALL_IDX_MAX; i++) {
+        if (set_watch_func[i].data == (void*)data) {
+            dbus_env = set_watch_func[i].dbus_env;
+            module_inst = get_module_inst(dbus_env);
+            argv[0] = addr_native_to_app((void*)watch);
+            argv[1] = addr_native_to_app((void*)data);
+            break;
+        }
+    }
+
+    if (i == DBUS_PENDING_CALL_IDX_MAX) {
+        syslog(LOG_INFO, "The callback remove_watch_func array is full");
+        return;
+    }
 
     wasm_runtime_call_indirect_internal(dbus_env,
-        dbus_remove_watch_func_idx,
+        set_watch_func[i].remove_watch_func_idx,
         2,
         argv);
 }
 
 void dbus_watch_toggled_func_proxy(DBusWatch* watch, void* data)
 {
-    wasm_module_inst_t module_inst = get_module_inst(dbus_env);
+    wasm_module_inst_t module_inst;
+    wasm_exec_env_t dbus_env;
     uint32_t argv[2];
+    int i;
 
-    argv[0] = addr_native_to_app((void*)watch);
-    argv[1] = addr_native_to_app((void*)data);
+    if (data == NULL) {
+        return;
+    }
+
+    for (i = 0; i < DBUS_PENDING_CALL_IDX_MAX; i++) {
+        if (set_watch_func[i].data == (void*)data) {
+            dbus_env = set_watch_func[i].dbus_env;
+            module_inst = get_module_inst(dbus_env);
+            argv[0] = addr_native_to_app((void*)watch);
+            argv[1] = addr_native_to_app((void*)data);
+            break;
+        }
+    }
+
+    if (i == DBUS_PENDING_CALL_IDX_MAX) {
+        syslog(LOG_INFO, "The callback watch_toggled_func array is full");
+        return;
+    }
 
     wasm_runtime_call_indirect_internal(dbus_env,
-        dbus_watch_toggled_func_idx,
+        set_watch_func[i].watch_toggled_func_idx,
         2,
         argv);
 }
 
 void dbus_connection_set_watch_free_data_proxy(void* data)
 {
-    wasm_module_inst_t module_inst = get_module_inst(dbus_env);
+    wasm_module_inst_t module_inst;
+    wasm_exec_env_t dbus_env;
     uint32_t argv[1];
+    int i;
 
-    argv[0] = addr_native_to_app((void*)data);
+    if (data == NULL) {
+        return;
+    }
+
+    for (i = 0; i < DBUS_PENDING_CALL_IDX_MAX; i++) {
+        if (set_watch_func[i].data == (void*)data) {
+            dbus_env = set_watch_func[i].dbus_env;
+            module_inst = get_module_inst(dbus_env);
+            argv[1] = addr_native_to_app((void*)data);
+            break;
+        }
+    }
+
+    if (i == DBUS_PENDING_CALL_IDX_MAX) {
+        syslog(LOG_INFO, "The callback set_watch_free array is full");
+        return;
+    }
 
     wasm_runtime_call_indirect_internal(
         dbus_env,
-        dbus_connection_set_watch_free_data_idx,
+        set_watch_func[i].connection_set_watch_free_data_idx,
         1,
         argv);
+
+    set_watch_func[i].data = NULL;
 }
 
 uintptr_t glue_dbus_connection_set_watch_functions(
@@ -647,12 +900,19 @@ uintptr_t glue_dbus_connection_set_watch_functions(
 {
     wasm_module_inst_t module_inst = get_module_inst(env);
     uintptr_t ret;
+    int i;
 
-    dbus_env = env;
-    dbus_add_watch_func_idx = parm2;
-    dbus_remove_watch_func_idx = parm3;
-    dbus_watch_toggled_func_idx = parm4;
-    dbus_connection_set_watch_free_data_idx = parm6;
+    for (i = 0; i < DBUS_PENDING_CALL_IDX_MAX; i++) {
+        if (set_watch_func[i].data == NULL) {
+            set_watch_func[i].add_watch_func_idx = parm2;
+            set_watch_func[i].remove_watch_func_idx = parm3;
+            set_watch_func[i].watch_toggled_func_idx = parm4;
+            set_watch_func[i].connection_set_watch_free_data_idx = parm6;
+            set_watch_func[i].data = (void*)parm5;
+            set_watch_func[i].dbus_env = env;
+            break;
+        }
+    }
 
     ret = dbus_connection_set_watch_functions(
         (DBusConnection*)parm1,
@@ -660,7 +920,8 @@ uintptr_t glue_dbus_connection_set_watch_functions(
         dbus_remove_watch_func_proxy,
         dbus_watch_toggled_func_proxy,
         (void*)parm5,
-        dbus_free_func_proxy);
+        dbus_connection_set_watch_free_data_proxy);
+
     return ret;
 }
 
@@ -668,9 +929,21 @@ uintptr_t glue_dbus_connection_set_watch_functions(
 
 #ifndef GLUE_FUNCTION_dbus_connection_set_timeout_functions
 #define GLUE_FUNCTION_dbus_connection_set_timeout_functions
-static int dbus_add_timeout_idx;
-static int dbus_remove_timeout_idx;
-static int dbus_timeout_toggled_idx;
+
+typedef struct dbus_timeout_call_idx {
+    int add_timeout;
+    int remove_timeout;
+    int timeout_toggle;
+    int timeout_free;
+    void* timeout;
+    void* data;
+    wasm_exec_env_t dbus_env;
+} dbus_timeout_call_idx;
+
+dbus_timeout_call_idx timeout_call_idx[DBUS_PENDING_CALL_IDX_MAX] = {
+    0
+};
+
 typedef dbus_bool_t (*DBusTimeoutHandler)(void* data);
 typedef void (*DBusFreeFunction)(void* memory);
 
@@ -690,15 +963,34 @@ struct DBusTimeout {
 
 dbus_bool_t dbus_add_timeout_proxy(DBusTimeout* timeout, void* data)
 {
-    wasm_module_inst_t module_inst = get_module_inst(dbus_env);
+    wasm_module_inst_t module_inst;
+    wasm_exec_env_t dbus_env;
     uint32_t argv[2];
     dbus_bool_t ret;
+    int i;
 
-    argv[0] = addr_native_to_app((void*)timeout);
-    argv[1] = addr_native_to_app((void*)data);
+    if (timeout == NULL) {
+        return;
+    }
+
+    for (i = 0; i < DBUS_PENDING_CALL_IDX_MAX; i++) {
+        if (timeout_call_idx[i].data == (void*)data) {
+            dbus_env = timeout_call_idx[i].dbus_env;
+            module_inst = get_module_inst(dbus_env);
+            argv[0] = addr_native_to_app((void*)timeout);
+            argv[1] = addr_native_to_app((void*)data);
+            break;
+        }
+    }
+
+    if (i == DBUS_PENDING_CALL_IDX_MAX) {
+        syslog(LOG_INFO, "The callback add_timeout array is full");
+        return;
+    }
+
     ret = wasm_runtime_call_indirect_internal(
               dbus_env,
-              dbus_add_timeout_idx,
+              timeout_call_idx[i].add_timeout,
               2,
               argv)
         ? argv[0]
@@ -708,15 +1000,33 @@ dbus_bool_t dbus_add_timeout_proxy(DBusTimeout* timeout, void* data)
 
 void dbus_remove_timeout_proxy(DBusTimeout* timeout, void* data)
 {
-    wasm_module_inst_t module_inst = get_module_inst(dbus_env);
+    wasm_module_inst_t module_inst;
+    wasm_exec_env_t dbus_env;
     uint32_t argv[2];
+    int i;
 
-    argv[0] = addr_native_to_app((void*)timeout);
-    argv[1] = addr_native_to_app((void*)data);
+    if (timeout == NULL) {
+        return;
+    }
+
+    for (i = 0; i < DBUS_PENDING_CALL_IDX_MAX; i++) {
+        if (timeout_call_idx[i].data == (void*)data) {
+            dbus_env = timeout_call_idx[i].dbus_env;
+            module_inst = get_module_inst(dbus_env);
+            argv[0] = addr_native_to_app((void*)timeout);
+            argv[1] = addr_native_to_app((void*)data);
+            break;
+        }
+    }
+
+    if (i == DBUS_PENDING_CALL_IDX_MAX) {
+        syslog(LOG_INFO, "The callback remove_timeout array is full");
+        return;
+    }
 
     wasm_runtime_call_indirect_internal(
         dbus_env,
-        dbus_remove_timeout_idx,
+        timeout_call_idx[i].remove_timeout,
         2,
         argv)
         ? argv[0]
@@ -725,37 +1035,96 @@ void dbus_remove_timeout_proxy(DBusTimeout* timeout, void* data)
 
 void dbus_timeout_toggled_proxy(DBusTimeout* timeout, void* data)
 {
-    wasm_module_inst_t module_inst = get_module_inst(dbus_env);
+    wasm_module_inst_t module_inst;
+    wasm_exec_env_t dbus_env;
     uint32_t argv[2];
+    int i;
 
-    argv[0] = addr_native_to_app((void*)timeout);
-    argv[1] = addr_native_to_app((void*)data);
+    if (timeout == NULL) {
+        return;
+    }
+
+    for (i = 0; i < DBUS_PENDING_CALL_IDX_MAX; i++) {
+        if (timeout_call_idx[i].data == (void*)data) {
+            dbus_env = timeout_call_idx[i].dbus_env;
+            module_inst = get_module_inst(dbus_env);
+            argv[0] = addr_native_to_app((void*)timeout);
+            argv[1] = addr_native_to_app((void*)data);
+            break;
+        }
+    }
+
+    if (i == DBUS_PENDING_CALL_IDX_MAX) {
+        syslog(LOG_INFO, "The callback timeout_toggled array is full");
+        return;
+    }
 
     wasm_runtime_call_indirect_internal(
         dbus_env,
-        dbus_timeout_toggled_idx,
+        timeout_call_idx[i].timeout_toggle,
         2,
         argv)
         ? argv[0]
         : 0;
 }
 
+void dbus_timeout_free_func_proxy(void* data)
+{
+    wasm_module_inst_t module_inst;
+    wasm_exec_env_t dbus_env;
+    uint32_t argv[1];
+    int i;
+
+    if (data == NULL) {
+        return;
+    }
+
+    for (i = 0; i < DBUS_PENDING_CALL_IDX_MAX; i++) {
+        if (timeout_call_idx[i].data == (void*)data) {
+            dbus_env = timeout_call_idx[i].dbus_env;
+            module_inst = get_module_inst(dbus_env);
+            argv[0] = addr_native_to_app((void*)data);
+            break;
+        }
+    }
+
+    if (i == DBUS_PENDING_CALL_IDX_MAX) {
+        syslog(LOG_INFO, "The callback timeout_free_func array is full");
+        return;
+    }
+
+    wasm_runtime_call_indirect_internal(dbus_env,
+        timeout_call_idx[i].timeout_free, 1, argv);
+
+    timeout_call_idx[i].data = NULL;
+}
+
 uintptr_t glue_dbus_connection_set_timeout_functions(
     wasm_exec_env_t env, uintptr_t parm1, uintptr_t parm2, uintptr_t parm3,
     uintptr_t parm4, uintptr_t parm5, uintptr_t parm6)
 {
+
     wasm_module_inst_t module_inst = get_module_inst(env);
     uintptr_t ret;
+    int i;
 
-    dbus_env = env;
-    dbus_add_timeout_idx = parm2;
-    dbus_remove_timeout_idx = parm3;
-    dbus_timeout_toggled_idx = parm4;
-    dbus_free_func_idx = parm6;
+    for (i = 0; i < DBUS_PENDING_CALL_IDX_MAX; i++) {
+        if (timeout_call_idx[i].data == NULL) {
+            timeout_call_idx[i].timeout = (void*)parm1;
+            timeout_call_idx[i].add_timeout = parm2;
+            timeout_call_idx[i].timeout_toggle = parm4;
+            timeout_call_idx[i].remove_timeout = parm3;
+            timeout_call_idx[i].timeout_free = parm6;
+            timeout_call_idx[i].data = (void*)parm5;
+            timeout_call_idx[i].dbus_env = env;
+            break;
+        }
+    }
+
     ret = dbus_connection_set_timeout_functions(
         (void*)parm1, dbus_add_timeout_proxy,
         dbus_remove_timeout_proxy, dbus_timeout_toggled_proxy, (void*)parm5,
-        dbus_free_func_proxy);
+        dbus_timeout_free_func_proxy);
     return ret;
 }
 
@@ -816,34 +1185,82 @@ uintptr_t glue_dbus_message_iter_append_basic(wasm_exec_env_t env,
 #ifndef GLUE_FUNCTION_dbus_connection_set_dispatch_status_function
 #define GLUE_FUNCTION_dbus_connection_set_dispatch_status_function
 
-static int dbus_dispatch_status_func_idx;
-static int dbus_connection_set_dispatch_status_free_data_idx;
+typedef struct dbus_status_func_idx {
+    int status_func_idx;
+    int free_data_idx;
+    void* connection;
+    void* data;
+    wasm_exec_env_t dbus_env;
+} dbus_status_func_idx;
 
-void dbus_dispatch_status_proxy(DBusConnection* connection,
+dbus_status_func_idx status_func_idx[DBUS_PENDING_CALL_IDX_MAX] = {
+    0
+};
+
+static void dbus_dispatch_status_proxy(DBusConnection* connection,
     DBusDispatchStatus new_status, void* data)
 {
-    wasm_module_inst_t module_inst = get_module_inst(dbus_env);
+    wasm_module_inst_t module_inst;
+    wasm_exec_env_t dbus_env;
     uint32_t argv[3];
+    int i;
 
-    argv[0] = addr_native_to_app((void*)connection);
-    argv[1] = new_status;
-    argv[2] = addr_native_to_app((void*)data);
+    if (data == NULL) {
+        return;
+    }
+
+    for (i = 0; i < DBUS_PENDING_CALL_IDX_MAX; i++) {
+        if (status_func_idx[i].connection == connection) {
+            dbus_env = status_func_idx[i].dbus_env;
+            module_inst = get_module_inst(dbus_env);
+            argv[0] = addr_native_to_app((void*)connection);
+            argv[1] = new_status;
+            argv[2] = addr_native_to_app((void*)data);
+            break;
+        }
+    }
+
+    if (i == DBUS_PENDING_CALL_IDX_MAX) {
+        syslog(LOG_INFO, "The callback dispatch_status array is full");
+        return;
+    }
+
     wasm_runtime_call_indirect_internal(dbus_env,
-        dbus_dispatch_status_func_idx, 3, argv);
+        status_func_idx[i].status_func_idx, 3, argv);
 }
 
-void dbus_connection_set_dispatch_status_free_data(void* data)
+static void dbus_connection_set_dispatch_status_free_data(void* data)
 {
-    wasm_module_inst_t module_inst = get_module_inst(dbus_env);
+    wasm_module_inst_t module_inst;
+    wasm_exec_env_t dbus_env;
     uint32_t argv[1];
+    int i;
 
-    argv[0] = addr_native_to_app((void*)data);
+    if (data == NULL) {
+        return;
+    }
+
+    for (i = 0; i < DBUS_PENDING_CALL_IDX_MAX; i++) {
+        if (status_func_idx[i].data == (void*)data) {
+            dbus_env = status_func_idx[i].dbus_env;
+            module_inst = get_module_inst(dbus_env);
+            argv[0] = addr_native_to_app((void*)data);
+            break;
+        }
+    }
+
+    if (i == DBUS_PENDING_CALL_IDX_MAX) {
+        syslog(LOG_INFO, "The callback set_dispatch_status_free_data array is full");
+        return;
+    }
 
     wasm_runtime_call_indirect_internal(
         dbus_env,
-        dbus_connection_set_dispatch_status_free_data_idx,
+        status_func_idx[i].free_data_idx,
         1,
         argv);
+
+    status_func_idx[i].connection = NULL;
 }
 
 void glue_dbus_connection_set_dispatch_status_function(wasm_exec_env_t env,
@@ -854,10 +1271,18 @@ void glue_dbus_connection_set_dispatch_status_function(wasm_exec_env_t env,
 {
     wasm_module_inst_t module_inst = get_module_inst(env);
     uintptr_t ret;
+    int i;
 
-    dbus_env = env;
-    dbus_dispatch_status_func_idx = parm2;
-    dbus_connection_set_dispatch_status_free_data_idx = parm4;
+    for (i = 0; i < DBUS_PENDING_CALL_IDX_MAX; i++) {
+        if (status_func_idx[i].connection == NULL) {
+            status_func_idx[i].connection = (void*)parm1;
+            status_func_idx[i].status_func_idx = parm2;
+            status_func_idx[i].free_data_idx = parm4;
+            status_func_idx[i].data = (void*)parm3;
+            status_func_idx[i].dbus_env = env;
+            break;
+        }
+    }
 
     dbus_connection_set_dispatch_status_function(
         (DBusConnection*)parm1,
@@ -868,55 +1293,49 @@ void glue_dbus_connection_set_dispatch_status_function(wasm_exec_env_t env,
 
 #endif /* GLUE_FUNCTION_dbus_connection_set_dispatch_status_function */
 
-typedef struct dbus_free_data_idx {
-    int idx_new;
-    int idx_old;
-    void* data;
-} dbus_free_data_idx;
-
-#define DBUS_FREE_DATA_IDX_MAX 64
-dbus_free_data_idx free_data_idx[DBUS_FREE_DATA_IDX_MAX] = {
-    0
-};
-
 #ifndef GLUE_FUNCTION_dbus_watch_set_data
 #define GLUE_FUNCTION_dbus_watch_set_data
+typedef struct dbus_watch_free_data_idx {
+    int idx_new;
+    int idx_old;
+    void* data_new;
+    void* data_old;
+    void* watch;
+    wasm_exec_env_t dbus_env;
+} dbus_watch_free_data_idx;
 
-typedef struct watch_info {
-    guint id;
-    DBusWatch* watch;
-    DBusConnection* conn;
-} watch_info;
-
-void dbus_watch_set_data_free_data(void* w_info)
+dbus_watch_free_data_idx dbus_watch_free_data_idxs[DBUS_PENDING_CALL_IDX_MAX] = {
+    0
+};
+void dbus_watch_set_data_free_data(void* data)
 {
-    wasm_module_inst_t module_inst = get_module_inst(dbus_env);
-    watch_info* info = (watch_info*)w_info;
-    DBusWatch* watch;
+    wasm_module_inst_t module_inst;
+    wasm_exec_env_t dbus_env;
     uint32_t argv[1];
     int i;
 
-    if (info == NULL) {
+    if (!data) {
         return;
     }
 
-    watch = (DBusWatch*)addr_app_to_native(info->watch);
-    for (i = 0; i < DBUS_FREE_DATA_IDX_MAX; i++) {
-        if (free_data_idx[i].data == watch) {
+    for (i = 0; i < DBUS_PENDING_CALL_IDX_MAX; i++) {
+        if (dbus_watch_free_data_idxs[i].data_old == data) {
+            dbus_env = dbus_watch_free_data_idxs[i].dbus_env;
             break;
         }
     }
 
-    if (i == DBUS_FREE_DATA_IDX_MAX) {
+    if (i == DBUS_PENDING_CALL_IDX_MAX) {
         return;
     }
 
-    argv[0] = addr_native_to_app((void*)w_info);
+    module_inst = get_module_inst(dbus_env);
+    argv[0] = addr_native_to_app((void*)data);
 
-    wasm_runtime_call_indirect(dbus_env, free_data_idx[i].idx_old, 1, argv);
+    wasm_runtime_call_indirect(dbus_env, dbus_watch_free_data_idxs[i].idx_old, 1, argv);
 
-    if (free_data_idx[i].idx_old == 0) {
-        free_data_idx[i].data = NULL;
+    if (dbus_watch_free_data_idxs[i].idx_new == 0) {
+        dbus_watch_free_data_idxs[i].watch = NULL;
     }
 }
 
@@ -926,24 +1345,34 @@ void glue_dbus_watch_set_data(wasm_exec_env_t env, uintptr_t parm1,
     wasm_module_inst_t module_inst = get_module_inst(env);
     DBusWatch* watch = (DBusWatch*)parm1;
     void* data = (void*)parm2;
+    void* app_addr = addr_native_to_app((void*)0);
     uintptr_t ret;
     int i;
 
-    for (i = 0; i < DBUS_FREE_DATA_IDX_MAX; i++) {
-        if (free_data_idx[i].data == watch) {
-            free_data_idx[i].idx_old = free_data_idx[i].idx_new;
-            free_data_idx[i].idx_new = parm3;
+    if (data == app_addr) {
+        data = NULL;
+    }
+
+    for (i = 0; i < DBUS_PENDING_CALL_IDX_MAX; i++) {
+        if (dbus_watch_free_data_idxs[i].watch == watch) {
+            dbus_watch_free_data_idxs[i].idx_old = dbus_watch_free_data_idxs[i].idx_new;
+            dbus_watch_free_data_idxs[i].idx_new = parm3;
+
+            dbus_watch_free_data_idxs[i].data_old = dbus_watch_free_data_idxs[i].idx_new;
+            dbus_watch_free_data_idxs[i].data_new = data;
+
             break;
         }
 
-        if (free_data_idx[i].data == NULL) {
-            free_data_idx[i].data = watch;
-            free_data_idx[i].idx_new = parm3;
+        if (dbus_watch_free_data_idxs[i].watch == NULL) {
+            dbus_watch_free_data_idxs[i].watch = watch;
+            dbus_watch_free_data_idxs[i].idx_new = parm3;
+            dbus_watch_free_data_idxs[i].data_new = data;
+            dbus_watch_free_data_idxs[i].dbus_env = env;
             break;
         }
     }
 
-    dbus_env = env;
     dbus_watch_set_data(
         watch,
         data,
@@ -955,16 +1384,23 @@ void glue_dbus_watch_set_data(wasm_exec_env_t env, uintptr_t parm1,
 #ifndef GLUE_FUNCTION_dbus_timeout_set_data
 #define GLUE_FUNCTION_dbus_timeout_set_data
 
-struct timeout_handler {
-    guint id;
-    DBusTimeout* timeout;
+typedef struct dbus_timeout_free_data_idx {
+    int idx_new;
+    int idx_old;
+    void* data_new;
+    void* data_old;
+    void* timeout;
+    wasm_exec_env_t dbus_env;
+} dbus_timeout_free_data_idx;
+
+dbus_timeout_free_data_idx dbus_timeout_set_data_idx[DBUS_PENDING_CALL_IDX_MAX] = {
+    0
 };
 
 void dbus_timeout_set_data_free_data(void* data)
 {
-    wasm_module_inst_t module_inst = get_module_inst(dbus_env);
-    struct timeout_handler* handler = data;
-    DBusTimeout* timeout;
+    wasm_module_inst_t module_inst;
+    wasm_exec_env_t dbus_env;
     uint32_t argv[1];
     uint32_t i = 0;
 
@@ -972,15 +1408,15 @@ void dbus_timeout_set_data_free_data(void* data)
         return;
     }
 
-    timeout = (DBusTimeout*)addr_app_to_native(handler->timeout);
-
-    for (i = 0; i < DBUS_FREE_DATA_IDX_MAX; i++) {
-        if (free_data_idx[i].data == timeout) {
+    for (i = 0; i < DBUS_PENDING_CALL_IDX_MAX; i++) {
+        if (dbus_timeout_set_data_idx[i].data_old == data) {
+            dbus_env = dbus_timeout_set_data_idx[i].dbus_env;
+            module_inst = get_module_inst(dbus_env);
             break;
         }
     }
 
-    if (i == DBUS_FREE_DATA_IDX_MAX) {
+    if (i == DBUS_PENDING_CALL_IDX_MAX) {
         return;
     }
 
@@ -988,12 +1424,11 @@ void dbus_timeout_set_data_free_data(void* data)
 
     wasm_runtime_call_indirect_internal(
         dbus_env,
-        free_data_idx[i].idx_old,
+        dbus_timeout_set_data_idx[i].idx_old,
         1,
         argv);
-
-    if (free_data_idx[i].idx_old == 0) {
-        free_data_idx[i].data = NULL;
+    if (dbus_timeout_set_data_idx[i].data_new == NULL) {
+        dbus_timeout_set_data_idx[i].timeout = NULL;
     }
 }
 
@@ -1002,21 +1437,31 @@ void glue_dbus_timeout_set_data(wasm_exec_env_t env, uintptr_t parm1,
 {
     wasm_module_inst_t module_inst = get_module_inst(env);
     DBusTimeout* timeout = (DBusTimeout*)parm1;
+    void* app_addr = addr_native_to_app((void*)0);
     void* data = (void*)parm2;
     uint32_t i = 0;
 
-    dbus_env = env;
+    if (data == app_addr) {
+        data = NULL;
+    }
 
-    for (i = 0; i < DBUS_FREE_DATA_IDX_MAX; i++) {
-        if (free_data_idx[i].data == timeout) {
-            free_data_idx[i].idx_old = free_data_idx[i].idx_new;
-            free_data_idx[i].idx_new = parm3;
+    for (i = 0; i < DBUS_PENDING_CALL_IDX_MAX; i++) {
+        if (dbus_timeout_set_data_idx[i].timeout == timeout) {
+
+            dbus_timeout_set_data_idx[i].data_old = dbus_timeout_set_data_idx[i].data_new;
+            dbus_timeout_set_data_idx[i].data_new = data;
+
+            dbus_timeout_set_data_idx[i].idx_old = dbus_timeout_set_data_idx[i].idx_new;
+            dbus_timeout_set_data_idx[i].idx_new = parm3;
             break;
         }
 
-        if (free_data_idx[i].data == NULL) {
-            free_data_idx[i].data = timeout;
-            free_data_idx[i].idx_new = parm3;
+        if (dbus_timeout_set_data_idx[i].timeout == NULL) {
+
+            dbus_timeout_set_data_idx[i].timeout = timeout;
+            dbus_timeout_set_data_idx[i].data_new = data;
+            dbus_timeout_set_data_idx[i].idx_new = parm3;
+            dbus_timeout_set_data_idx[i].dbus_env = env;
             break;
         }
     }
@@ -1031,51 +1476,109 @@ void glue_dbus_timeout_set_data(wasm_exec_env_t env, uintptr_t parm1,
 
 #ifndef GLUE_FUNCTION_dbus_pending_call_set_notify
 #define GLUE_FUNCTION_dbus_pending_call_set_notify
-static int dbus_pending_call_notify_idx;
-static int dbus_pending_call_set_notify_free_data_idx;
 
-void dbus_pending_call_notify_proxy(DBusPendingCall* pending,
+typedef struct dbus_pending_call_idx {
+    int notify_idx;
+    int free_data_idx;
+    void* pending;
+    void* data;
+    wasm_exec_env_t dbus_env;
+} dbus_pending_call_idx;
+
+dbus_pending_call_idx pending_call_idx[DBUS_PENDING_CALL_IDX_MAX] = {
+    0
+};
+
+static void dbus_pending_call_notify_proxy(DBusPendingCall* pending,
     void* user_data)
 {
-    wasm_module_inst_t module_inst = get_module_inst(dbus_env);
+    wasm_module_inst_t module_inst;
+    wasm_exec_env_t dbus_env;
     uint32_t argv[2];
+    int i;
 
-    argv[0] = addr_native_to_app((void*)pending);
-    argv[1] = addr_native_to_app((void*)user_data);
+    if (pending == NULL) {
+        return;
+    }
 
+    for (i = 0; i < DBUS_PENDING_CALL_IDX_MAX; i++) {
+        if (pending_call_idx[i].pending == (void*)pending) {
+            dbus_env = pending_call_idx[i].dbus_env;
+            module_inst = get_module_inst(dbus_env);
+            argv[0] = addr_native_to_app((void*)pending);
+            argv[1] = addr_native_to_app((void*)user_data);
+            break;
+        }
+    }
+
+    if (i == DBUS_PENDING_CALL_IDX_MAX) {
+        syslog(LOG_INFO, "The callback pending_call array is full");
+        return;
+    }
     wasm_runtime_call_indirect_internal(
         dbus_env,
-        dbus_pending_call_notify_idx,
+        pending_call_idx[i].notify_idx,
         2,
         argv);
 }
 
 static void dbus_pending_call_set_notify_free_data(void* data)
 {
-    wasm_module_inst_t module_inst = get_module_inst(dbus_env);
+    wasm_module_inst_t module_inst;
+    wasm_exec_env_t dbus_env;
     uint32_t argv[1];
+    int i;
 
-    argv[0] = addr_native_to_app((void*)data);
+    if (data == NULL) {
+        return;
+    }
+
+    for (i = 0; i < DBUS_PENDING_CALL_IDX_MAX; i++) {
+
+        if (pending_call_idx[i].data == (void*)data) {
+            dbus_env = pending_call_idx[i].dbus_env;
+            module_inst = get_module_inst(dbus_env);
+            argv[0] = addr_native_to_app((void*)data);
+            break;
+        }
+    }
+
+    if (i == DBUS_PENDING_CALL_IDX_MAX) {
+        syslog(LOG_INFO, "The callback pending_call_set array is full");
+        return;
+    }
 
     wasm_runtime_call_indirect_internal(
         dbus_env,
-        dbus_pending_call_set_notify_free_data_idx,
+        pending_call_idx[i].free_data_idx,
         1,
         argv);
+
+    pending_call_idx[i].data = NULL;
 }
 
 uintptr_t glue_dbus_pending_call_set_notify(wasm_exec_env_t env,
     uintptr_t parm1, uintptr_t parm2,
     uintptr_t parm3, uintptr_t parm4)
 {
+
     wasm_module_inst_t module_inst = get_module_inst(env);
     DBusPendingCall* pending = (DBusPendingCall*)parm1;
     void* data = (void*)parm3;
     uintptr_t ret;
+    int i;
 
-    dbus_env = env;
-    dbus_pending_call_notify_idx = parm2;
-    dbus_pending_call_set_notify_free_data_idx = parm4;
+    for (i = 0; i < DBUS_PENDING_CALL_IDX_MAX; i++) {
+        if (pending_call_idx[i].data == NULL) {
+            pending_call_idx[i].pending = (void*)pending;
+            pending_call_idx[i].notify_idx = parm2;
+            pending_call_idx[i].free_data_idx = parm4;
+            pending_call_idx[i].data = (void*)parm3;
+            pending_call_idx[i].dbus_env = env;
+            break;
+        }
+    }
+
     ret = dbus_pending_call_set_notify(
         pending,
         dbus_pending_call_notify_proxy,
@@ -1088,36 +1591,85 @@ uintptr_t glue_dbus_pending_call_set_notify(wasm_exec_env_t env,
 
 #ifndef GLUE_FUNCTION_dbus_set_disconnect_function
 #define GLUE_FUNCTION_dbus_set_disconnect_function
-static int dbus_watch_func_idx;
-static int dbus_set_disconnect_function_free_data_idx;
 
-void dbus_watch_func_proxy(DBusConnection* connection, void* user_data)
+typedef struct dbus_watch_func_idx {
+    int watch_func_idx;
+    int free_data_idx;
+    void* connection;
+    void* data;
+    wasm_exec_env_t dbus_env;
+} dbus_watch_func_idx;
+
+dbus_watch_func_idx watch_func_idx[DBUS_PENDING_CALL_IDX_MAX] = {
+    0
+};
+
+static void dbus_watch_func_proxy(DBusConnection* connection, void* user_data)
 {
-    wasm_module_inst_t module_inst = get_module_inst(dbus_env);
+    wasm_module_inst_t module_inst;
     uint32_t argv[2];
+    wasm_exec_env_t dbus_env;
+    int i;
 
-    argv[0] = addr_native_to_app((void*)connection);
-    argv[1] = addr_native_to_app((void*)user_data);
+    if (user_data == NULL) {
+        return;
+    }
+
+    for (i = 0; i < DBUS_PENDING_CALL_IDX_MAX; i++) {
+        if (watch_func_idx[i].data == (void*)user_data) {
+            dbus_env = watch_func_idx[i].dbus_env;
+            module_inst = get_module_inst(dbus_env);
+            argv[0] = addr_native_to_app((void*)connection);
+            argv[1] = addr_native_to_app((void*)user_data);
+            break;
+        }
+    }
+
+    if (i == DBUS_PENDING_CALL_IDX_MAX) {
+        syslog(LOG_INFO, "The callback watch_func_proxy array is full");
+        return;
+    }
 
     wasm_runtime_call_indirect_internal(
         dbus_env,
-        dbus_watch_func_idx,
+        watch_func_idx[i].watch_func_idx,
         2,
         argv);
 }
 
 static void dbus_set_disconnect_function_free_data(void* data)
 {
-    wasm_module_inst_t module_inst = get_module_inst(dbus_env);
+    wasm_module_inst_t module_inst;
+    wasm_exec_env_t dbus_env;
     uint32_t argv[1];
+    int i;
 
-    argv[0] = addr_native_to_app((void*)data);
+    if (data == NULL) {
+        return;
+    }
+
+    for (i = 0; i < DBUS_PENDING_CALL_IDX_MAX; i++) {
+        if (watch_func_idx[i].data == (void*)data) {
+            dbus_env = watch_func_idx[i].dbus_env;
+            module_inst = get_module_inst(dbus_env);
+            argv[0] = addr_native_to_app((void*)data);
+
+            break;
+        }
+    }
+
+    if (i == DBUS_PENDING_CALL_IDX_MAX) {
+        syslog(LOG_INFO, "The callback set_disconnect_function array is full");
+        return;
+    }
 
     wasm_runtime_call_indirect_internal(
         dbus_env,
-        dbus_set_disconnect_function_free_data_idx,
+        watch_func_idx[i].free_data_idx,
         1,
         argv);
+
+    watch_func_idx[i].data = NULL;
 }
 
 uintptr_t glue_dbus_set_disconnect_function(wasm_exec_env_t env,
@@ -1126,14 +1678,31 @@ uintptr_t glue_dbus_set_disconnect_function(wasm_exec_env_t env,
 {
     wasm_module_inst_t module_inst = get_module_inst(env);
     uintptr_t ret;
+    int i;
 
-    dbus_env = env;
-    dbus_watch_func_idx = parm2;
-    dbus_set_disconnect_function_free_data_idx = parm4;
+    DBusConnection* connection = (DBusConnection*)parm1;
+    void* data = (void*)parm3;
+
+    for (i = 0; i < DBUS_PENDING_CALL_IDX_MAX; i++) {
+        if (watch_func_idx[i].data == NULL) {
+            watch_func_idx[i].connection = (void*)connection;
+            watch_func_idx[i].watch_func_idx = parm2;
+            watch_func_idx[i].free_data_idx = parm4;
+            watch_func_idx[i].data = data;
+            watch_func_idx[i].dbus_env = env;
+            break;
+        }
+    }
+
+    if (i == DBUS_PENDING_CALL_IDX_MAX) {
+        syslog(LOG_INFO, "The callback set_disconnect array is full");
+        return;
+    }
+
     ret = dbus_set_disconnect_function(
-        (void*)parm1,
+        connection,
         dbus_watch_func_proxy,
-        (void*)parm3,
+        data,
         dbus_set_disconnect_function_free_data);
     return ret;
 }
@@ -1197,6 +1766,61 @@ uintptr_t glue_dbus_bus_get(wasm_exec_env_t env, uintptr_t parm1, uintptr_t parm
 }
 
 #endif /* GLUE_FUNCTION_dbus_bus_get */
+#ifndef GLUE_FUNCTION_dbus_connection_send_with_reply
+#define GLUE_FUNCTION_dbus_connection_send_with_reply
+
+uintptr_t glue_dbus_connection_send_with_reply(wasm_exec_env_t env, uintptr_t parm1, uintptr_t parm2, uintptr_t parm3, uintptr_t parm4)
+{
+    wasm_module_inst_t module_inst = get_module_inst(env);
+    uintptr_t ret;
+    struct DBusPendingCall** call;
+
+    void* addr_app = addr_app_to_native((uintptr_t)NULL);
+    if ((void*)parm1 == addr_app)
+        parm1 = (uintptr_t)NULL;
+
+    if ((void*)parm2 == addr_app)
+        parm2 = (uintptr_t)NULL;
+
+    if ((void*)parm3 == addr_app) {
+        parm3 = (uintptr_t)NULL;
+    } else {
+        call = (struct DBusPendingCall**)parm3;
+    }
+
+    ret = addr_native_to_app((uintptr_t)dbus_connection_send_with_reply((DBusConnection*)parm1, (DBusMessage*)parm2, (DBusPendingCall**)call, (int)parm4));
+
+    *call = (struct DBusPendingCall*)addr_native_to_app((uintptr_t)*call);
+
+    return ret;
+}
+
+#endif /* GLUE_FUNCTION_dbus_connection_send_with_reply */
+
+#ifndef GLUE_FUNCTION_dbus_set_error_from_message
+#define GLUE_FUNCTION_dbus_set_error_from_message
+uintptr_t glue_dbus_set_error_from_message(wasm_exec_env_t env, uintptr_t parm1, uintptr_t parm2)
+{
+    wasm_module_inst_t module_inst = get_module_inst(env);
+    uintptr_t ret;
+    DBusError* error = (DBusError*)parm1;
+
+    void* addr_app = addr_app_to_native((uintptr_t)NULL);
+    if ((void*)parm1 == addr_app)
+        parm1 = (uintptr_t)NULL;
+
+    if ((void*)parm2 == addr_app)
+        parm2 = (uintptr_t)NULL;
+
+    ret = dbus_set_error_from_message(error, (DBusMessage*)parm2);
+
+    error->name = addr_native_to_app((uintptr_t)error->name);
+    error->message = addr_native_to_app((uintptr_t)error->message);
+
+    return ret;
+}
+
+#endif /* GLUE_FUNCTION_dbus_set_error_from_message */
 
 #ifndef GLUE_FUNCTION_dbus_error_free
 #define GLUE_FUNCTION_dbus_error_free
