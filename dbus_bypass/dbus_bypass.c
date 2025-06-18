@@ -27,6 +27,7 @@
 #include <stdlib.h>
 #include <sys/param.h>
 #include <sys/types.h>
+#include "gdbus.h"
 
 /****************************************************************************
  * Private Functions
@@ -322,7 +323,7 @@ static void dbus_message_args_conv(wasm_exec_env_t env, int first_arg_type,
                 n_elements = *(int*)pos;
                 pos += sizeof(int*);
 
-                for (int i = 0; i < n_elements; i++) {
+                for (i = 0; i < n_elements; i++) {
                     array_p[i] = addr_app_to_native(array_p[i]);
                 }
             }
@@ -338,7 +339,7 @@ static void dbus_message_args_conv(wasm_exec_env_t env, int first_arg_type,
                 *(uintptr_t*)pos = (uintptr_t)addr_native_to_app(*(uintptr_t*)pos);
                 pos += sizeof(uintptr_t*);
 
-                for (int i = 0; i < n_elements; i++) {
+                for (i = 0; i < n_elements; i++) {
                     array_p[i] = addr_native_to_app(array_p[i]);
                 }
             }
