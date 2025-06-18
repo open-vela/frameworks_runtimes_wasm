@@ -18,6 +18,11 @@ include $(APPDIR)/Make.defs
 
 IWASM_ROOT := $(APPDIR)/interpreters/wamr
 
+CFLAGS += -I$(APPDIR)/external/glib/glib
+CFLAGS += -I$(APPDIR)/external/dbus/dbus/dbus
+CFLAGS += -I$(APPDIR)/external/dbus/dbus
+CFLAGS += -I$(APPDIR)/frameworks/system/utils/gdbus
+
 CSRCS += dbus_bypass.c
 
 CFLAGS += -Wno-unused-variable -Wno-int-conversion
@@ -35,6 +40,8 @@ depend:: $(GLUECSRCS)
 
 distclean::
 	$(call DELFILE, dbus_glue.c)
+	$(call DELFILE, signature_dbus.so)
+	$(call DELFILE, signature_dbus_glue.c)
 
 include $(APPDIR)/interpreters/wamr/Module.mk
 include $(APPDIR)/Application.mk
