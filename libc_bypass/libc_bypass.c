@@ -24,6 +24,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <assert.h>
 #include <sys/param.h>
 #include <sys/socket.h>
 #include <sys/types.h>
@@ -31,6 +32,14 @@
 #include <mqueue.h>
 #include <fcntl.h>
 #include <pthread.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <sys/ioctl.h>
+#include <net/if.h>
+#include <netdb.h>
+#include <ifaddrs.h>
+#include <pthread.h>
+#include <unistd.h>
 
 #include "wasm_export.h"
 
@@ -1126,6 +1135,228 @@ double glue_ldexp(wasm_exec_env_t env, double parm1, int parm2)
 }
 #endif /* GLUE_FUNCTION_ldexp */
 #endif /* defined(CONFIG_HAVE_DOUBLE) && !defined(CONFIG_LIBM_NONE) */
+
+#if defined(CONFIG_NET_IPv4)
+
+#ifndef GLUE_FUNCTION_inet_ntoa
+#define GLUE_FUNCTION_inet_ntoa
+uintptr_t glue_inet_ntoa(wasm_exec_env_t env, uintptr_t parm1)
+{
+    struct in_addr addr;
+    addr.s_addr = parm1;
+
+    wasm_module_inst_t module_inst = get_module_inst(env);
+    uintptr_t ret;
+    ret = addr_native_to_app((uintptr_t)inet_ntoa(addr));
+    return ret;
+}
+
+#endif /* GLUE_FUNCTION_inet_ntoa */
+#endif /* defined(CONFIG_NET_IPv4) */
+
+#ifndef GLUE_FUNCTION_ioctl
+#define GLUE_FUNCTION_ioctl
+
+static void libc_ioctl_args_conv(wasm_exec_env_t env, int first_arg_type,
+    va_list ap, bool to_native)
+{
+    wasm_module_inst_t module_inst = get_module_inst(env);
+
+    struct ifconf* ifc = va_arg(ap, struct ifconf*);
+    if (!ifc) {
+        return;
+    } else {
+
+        ifc = (uintptr_t)addr_app_to_native((uintptr_t)ifc);
+    }
+
+    void* addr_app = addr_app_to_native((uintptr_t)NULL);
+
+    if (SIOCGIFCONF == first_arg_type) {
+        if (to_native) {
+            if (ifc == addr_app) {
+                return;
+            }
+
+            if (ifc->ifc_req == NULL) {
+                ifc->ifc_req = (uintptr_t)NULL;
+            } else {
+                ifc->ifc_req = (uintptr_t)addr_app_to_native((uintptr_t)ifc->ifc_req);
+            }
+        } else {
+
+            if (ifc == NULL) {
+                return;
+            }
+
+            if (ifc->ifc_req != NULL) {
+                ifc->ifc_req = (uintptr_t)addr_native_to_app((uintptr_t)ifc->ifc_req);
+            }
+        }
+    }
+}
+
+uintptr_t glue_ioctl(wasm_exec_env_t env, uintptr_t parm1, uintptr_t parm2, va_list ap)
+{
+    wasm_module_inst_t module_inst = get_module_inst(env);
+    uintptr_t ret;
+
+    libc_ioctl_args_conv(env, parm2, ap, true);
+
+    ret = ioctl((int)parm1, (int)parm2, (*(uintptr_t**)&ap != NULL && **(uintptr_t**)&ap != (uintptr_t)NULL) ? (uintptr_t)addr_app_to_native((uintptr_t)va_arg(ap, unsigned long)) : (uintptr_t)NULL);
+
+    libc_ioctl_args_conv(env, parm2, ap, false);
+
+    return ret;
+}
+
+#endif /* GLUE_FUNCTION_ioctl */
+
+#if defined(CONFIG_LIBC_NETDB)
+
+#ifndef GLUE_FUNCTION_getaddrinfo
+#define GLUE_FUNCTION_getaddrinfo
+
+static void addrinfo2app(wasm_exec_env_t env, struct addrinfo* addr)
+{
+    wasm_module_inst_t module_inst = get_module_inst(env);
+    struct addrinfo* cur = addr;
+    struct addrinfo* tmp;
+
+    while (cur) {
+        cur->ai_canonname = addr_native_to_app(cur->ai_canonname);
+        cur->ai_addr = addr_native_to_app(cur->ai_addr);
+        tmp = cur->ai_next;
+        cur->ai_next = addr_native_to_app(cur->ai_next);
+        cur = tmp;
+    }
+}
+
+uintptr_t glue_getaddrinfo(wasm_exec_env_t env, uintptr_t parm1, uintptr_t parm2, uintptr_t parm3, uintptr_t parm4)
+{
+    wasm_module_inst_t module_inst = get_module_inst(env);
+    uintptr_t ret;
+    struct addrinfo** addr = (struct addrinfo**)parm4;
+
+    void* addr_app = addr_app_to_native((uintptr_t)NULL);
+    if ((void*)parm1 == addr_app)
+        parm1 = (uintptr_t)NULL;
+
+    if ((void*)parm2 == addr_app)
+        parm2 = (uintptr_t)NULL;
+
+    if ((void*)parm3 == addr_app)
+        parm3 = (uintptr_t)NULL;
+
+    if ((void*)parm4 == addr_app)
+        parm4 = (uintptr_t)NULL;
+
+    ret = getaddrinfo((FAR const char*)parm1, (FAR const char*)parm2, (FAR const struct addrinfo*)parm3, addr);
+
+    addrinfo2app(env, *addr);
+    *addr = addr_native_to_app(*addr);
+
+    return ret;
+}
+
+#endif /* GLUE_FUNCTION_getaddrinfo */
+#endif /* defined(CONFIG_LIBC_NETDB) */
+
+static void ifaddrsinfo2app(wasm_exec_env_t env, struct ifaddrs* addr)
+{
+    wasm_module_inst_t module_inst = get_module_inst(env);
+    struct ifaddrs* cur = addr;
+    struct ifaddrs* tmp;
+
+    while (cur) {
+        cur->ifa_ifu.ifu_broadaddr = addr_native_to_app(cur->ifa_ifu.ifu_broadaddr);
+        cur->ifa_addr = addr_native_to_app(cur->ifa_addr);
+        cur->ifa_name = addr_native_to_app(cur->ifa_name);
+        cur->ifa_data = addr_native_to_app(cur->ifa_data);
+        cur->ifa_netmask = addr_native_to_app(cur->ifa_netmask);
+        tmp = cur->ifa_next;
+        cur->ifa_next = addr_native_to_app(cur->ifa_next);
+        cur = tmp;
+    }
+}
+
+static void ifaddrsinfo2native(wasm_exec_env_t env, struct ifaddrs* addr)
+{
+    wasm_module_inst_t module_inst = get_module_inst(env);
+    struct ifaddrs* cur = addr;
+
+    while (cur) {
+        cur->ifa_ifu.ifu_broadaddr = addr_app_to_native(cur->ifa_ifu.ifu_broadaddr);
+        cur->ifa_addr = addr_app_to_native(cur->ifa_addr);
+        cur->ifa_data = addr_app_to_native(cur->ifa_data);
+        cur->ifa_name = addr_app_to_native(cur->ifa_name);
+        cur->ifa_netmask = addr_app_to_native(cur->ifa_netmask);
+
+        if (cur->ifa_next == NULL) {
+            break;
+        }
+
+        cur->ifa_next = addr_app_to_native(cur->ifa_next);
+        cur = cur->ifa_next;
+    }
+}
+
+#ifndef GLUE_FUNCTION_getifaddrs
+#define GLUE_FUNCTION_getifaddrs
+
+uintptr_t glue_getifaddrs(wasm_exec_env_t env, uintptr_t parm1)
+{
+    wasm_module_inst_t module_inst = get_module_inst(env);
+    uintptr_t ret;
+    struct ifaddrs** addr = (struct ifaddrs**)parm1;
+
+    void* addr_app = addr_app_to_native((uintptr_t)NULL);
+    if ((void*)parm1 == addr_app)
+        parm1 = (uintptr_t)NULL;
+
+    ret = getifaddrs(addr);
+
+    ifaddrsinfo2app(env, *addr);
+    *addr = addr_native_to_app(*addr);
+
+    return ret;
+}
+
+#endif /* GLUE_FUNCTION_getifaddrs */
+
+#ifndef GLUE_FUNCTION_freeifaddrs
+#define GLUE_FUNCTION_freeifaddrs
+void glue_freeifaddrs(wasm_exec_env_t env, uintptr_t parm1)
+{
+    wasm_module_inst_t module_inst = get_module_inst(env);
+    uintptr_t ret;
+    struct ifaddrs* addr = (struct ifaddrs*)parm1;
+
+    void* addr_app = addr_app_to_native((uintptr_t)NULL);
+    if ((void*)parm1 == addr_app)
+        parm1 = (uintptr_t)NULL;
+
+    ifaddrsinfo2native(env, addr);
+    freeifaddrs(addr);
+
+    addr = NULL;
+}
+
+#endif /* GLUE_FUNCTION_freeifaddrs */
+
+#ifndef GLUE_FUNCTION_execl
+#define GLUE_FUNCTION_execl
+uintptr_t glue_execl(wasm_exec_env_t env, uintptr_t parm1, uintptr_t format, va_list ap)
+{
+    wasm_module_inst_t module_inst = get_module_inst(env);
+    uintptr_t ret;
+    va_list_string2native(env, format, ap);
+    ret = execl((FAR const char*)parm1, (FAR const char*)format, ap, NULL);
+    va_list_string2app(env, format, ap);
+    return ret;
+}
+
+#endif /* GLUE_FUNCTION_execl */
 
 /****************************************************************************
  * Included Files
