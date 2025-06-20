@@ -24,6 +24,8 @@ if (CONFIG_CHRE_WASM)
     chre.cc)
 
   target_sources(apps PRIVATE ${CXXSRCS})
+  target_include_directories(apps PRIVATE ${NUTTX_APPS_DIR}/external/android/system/chre/chre/chre_api/include/chre_api)
+  target_compile_options(apps PRIVATE -DCHRE_MESSAGE_TO_HOST_MAX_SIZE=${CONFIG_CHRE_MESSAGE_TO_HOST_MAX_SIZE})
   # register WAMR mod
   nuttx_add_wamrmod(MODS chre)
 endif()
