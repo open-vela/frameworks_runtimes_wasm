@@ -43,6 +43,8 @@ distclean::
 	$(call DELFILE, syscall_glue.c)
 	$(call DELFILE, libc_glue.c)
 	$(call DELFILE, libm_glue.c)
+	$(call DELFILE, signature_*.so)
+	$(call DELFILE, signature_*.c)
 
 include $(APPDIR)/interpreters/wamr/Module.mk
 include $(APPDIR)/Application.mk
