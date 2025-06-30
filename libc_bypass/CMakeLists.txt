@@ -40,4 +40,34 @@ if(CONFIG_WASM_LIBC_BYPASS)
   target_sources(wamr PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/libc_bypass.c)
   nuttx_add_wamrmod(MODS libc_bypass)
 
+  # generate .so files
+  set(WAMR_ROOT ${NUTTX_APPS_DIR}/interpreters/wamr)
+  include_directories(${WAMR_ROOT})
+  add_custom_target(
+    signature_libc
+    COMMAND gcc -shared -fPIC -o signature_libc.so
+            ${CMAKE_CURRENT_BINARY_DIR}/signature_libc_glue.c -I${WAMR_ROOT}
+    DEPENDS gen_glue_sources
+    COMMENT "Build signature_libc.so")
+
+  add_custom_target(
+    signature_libm
+    COMMAND gcc -shared -fPIC -o signature_libm.so
+            ${CMAKE_CURRENT_BINARY_DIR}/signature_libm_glue.c -I${WAMR_ROOT}
+    DEPENDS gen_glue_sources
+    COMMENT "Build signature_libm.so")
+
+  add_custom_target(
+    signature_syscall
+    COMMAND gcc -shared -fPIC -o signature_syscall.so
+            ${CMAKE_CURRENT_BINARY_DIR}/signature_syscall_glue.c -I${WAMR_ROOT}
+    DEPENDS gen_glue_sources
+    COMMENT "Build signature_syscall.so")
+
+  wasm_collect_aot_flag("--native-lib=${CMAKE_CURRENT_BINARY_DIR}/signature_libc.so")
+
+  add_dependencies(wamr signature_libc)
+  add_dependencies(wamr signature_libm)
+  add_dependencies(wamr signature_syscall)
+
 endif()
