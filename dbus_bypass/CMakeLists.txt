@@ -23,7 +23,8 @@ if(CONFIG_WASM_DBUS_BYPASS)
   list(APPEND INCDIR ${NUTTX_APPS_DIR}/external/dbus/dbus
   ${NUTTX_APPS_DIR}/external/dbus/dbus/dbus
   ${NUTTX_APPS_DIR}/external/glib/glib/glib
-  ${NUTTX_APPS_DIR}/external/glib/glib)
+  ${NUTTX_APPS_DIR}/external/glib/glib
+  ${NUTTX_APPS_DIR}/frameworks/system/utils/gdbus)
 
   add_custom_target(
     gen_dbus_glue_sources
