@@ -28,6 +28,10 @@
 
 #include "lwac_internal.h"
 
+#ifdef CONFIG_INTERPRETERS_WAMR_EXTERNAL_MODULE_REGISTRY
+#include "wamr_external_module_proto.h"
+#endif
+
 // Default application stack and heap sizes
 #define DEFAULT_APP_STACK_SIZE CONFIG_WASM_LWAC_APP_DEFAULT_STACK_SIZE
 #define DEFAULT_APP_HEAP_SIZE CONFIG_WASM_LWAC_APP_DEFAULT_HEAP_SIZE
@@ -71,6 +75,14 @@ typedef struct {
 static int g_wasm_runtime_ref_count = 0;
 static pthread_mutex_t g_wasm_runtime_mutex = PTHREAD_MUTEX_INITIALIZER;
 
+typedef bool (*module_register_t)(void);
+
+#ifdef CONFIG_INTERPRETERS_WAMR_EXTERNAL_MODULE_REGISTRY
+static const module_register_t g_wamr_modules[] = {
+#include "wamr_external_module_list.h"
+};
+#endif
+
 // Function to increment reference count and initialize runtime if needed
 static int lwac_runtime_init(void)
 {
@@ -84,6 +96,16 @@ static int lwac_runtime_init(void)
             ret = -1;
             goto unlock;
         }
+
+#ifdef CONFIG_INTERPRETERS_WAMR_EXTERNAL_MODULE_REGISTRY
+        for (int i = 0; i < sizeof(g_wamr_modules) / sizeof(g_wamr_modules[0]); i++) {
+            if (!g_wamr_modules[i]()) {
+                printf("Error: failed to register external module %d\n", i);
+                ret = -1;
+                goto unlock;
+            }
+        }
+#endif
     }
 
     g_wasm_runtime_ref_count++;

@@ -27,4 +27,6 @@ MODULE    = $(CONFIG_WASM_LWAC)
 
 MAINSRC = lwac.c
 
+CFLAGS += -I$(APPDIR)/interpreters/wamr
+
 include $(APPDIR)/Application.mk
