@@ -76,7 +76,7 @@ void* calloc_wasm(size_t nmemb, size_t size)
 
     call_indirect("calloc_proxy", 2, value);
 
-    result = (void*)value[0];
+    result = (void*)(uintptr_t)value[0];
 
     return result;
 }
@@ -95,8 +95,8 @@ int memcmp_wasm(const void* s1, const void* s2, size_t n)
 {
     char* t1 = (char*)malloc_wasm(strlen(s1) * sizeof(char));
     char* t2 = (char*)malloc_wasm(strlen(s2) * sizeof(char));
-    char* na_t1 = wasm_runtime_addr_app_to_native(g_module_instance, (uint64_t)(uint32_t)t1);
-    char* na_t2 = wasm_runtime_addr_app_to_native(g_module_instance, (uint64_t)(uint32_t)t2);
+    char* na_t1 = wasm_runtime_addr_app_to_native(g_module_instance, (uintptr_t)t1);
+    char* na_t2 = wasm_runtime_addr_app_to_native(g_module_instance, (uintptr_t)t2);
     strcpy(na_t1, s1);
     strcpy(na_t2, s2);
 
@@ -114,24 +114,24 @@ int memcmp_wasm(const void* s1, const void* s2, size_t n)
 char* strdup_wasm(const char* s)
 {
     char* t = (char*)malloc_wasm(strlen(s) * sizeof(char));
-    char* na_t = wasm_runtime_addr_app_to_native(g_module_instance, (uint64_t)(uint32_t)t);
+    char* na_t = wasm_runtime_addr_app_to_native(g_module_instance, (uintptr_t)t);
     strcpy(na_t, s);
-    uint32_t value = (uint32_t)t;
+    uint32_t value = (uint32_t)(uintptr_t)t;
 
     call_indirect("strdup_proxy", 1, &value);
 
     /* malloc_wasm need free */
     free_wasm(t);
-    return (char*)value;
+    return (char*)(uintptr_t)value;
 }
 
 /* Define the atoi_wasm function */
 int atoi_wasm(const char* nptr)
 {
     char* ptr = (char*)malloc_wasm(strlen(nptr) * sizeof(char));
-    char* na_ptr = wasm_runtime_addr_app_to_native(g_module_instance, (uint64_t)(uint32_t)ptr);
+    char* na_ptr = wasm_runtime_addr_app_to_native(g_module_instance, (uintptr_t)ptr);
     strcpy(na_ptr, nptr);
-    uint32_t value = (uint32_t)ptr;
+    uint32_t value = (uint32_t)(uintptr_t)ptr;
 
     call_indirect("atoi_proxy", 1, &value);
 
@@ -192,8 +192,8 @@ size_t strspn_wasm(const char* s, const char* accept)
     char* ptr1 = (char*)malloc_wasm(strlen(s) * sizeof(char));
     char* ptr2 = (char*)malloc_wasm(strlen(accept) * sizeof(char));
 
-    char* na_ptr1 = wasm_runtime_addr_app_to_native(g_module_instance, (uint64_t)(uint32_t)ptr1);
-    char* na_ptr2 = wasm_runtime_addr_app_to_native(g_module_instance, (uint64_t)(uint32_t)ptr2);
+    char* na_ptr1 = wasm_runtime_addr_app_to_native(g_module_instance, (uintptr_t)ptr1);
+    char* na_ptr2 = wasm_runtime_addr_app_to_native(g_module_instance, (uintptr_t)ptr2);
 
     strcpy(na_ptr1, s);
     strcpy(na_ptr2, accept);
@@ -214,8 +214,8 @@ size_t strcspn_wasm(const char* s, const char* reject)
     char* ptr1 = (char*)malloc_wasm(strlen(s) * sizeof(char));
     char* ptr2 = (char*)malloc_wasm(strlen(reject) * sizeof(char));
 
-    char* na_ptr1 = wasm_runtime_addr_app_to_native(g_module_instance, (uint64_t)(uint32_t)ptr1);
-    char* na_ptr2 = wasm_runtime_addr_app_to_native(g_module_instance, (uint64_t)(uint32_t)ptr2);
+    char* na_ptr1 = wasm_runtime_addr_app_to_native(g_module_instance, (uintptr_t)ptr1);
+    char* na_ptr2 = wasm_runtime_addr_app_to_native(g_module_instance, (uintptr_t)ptr2);
 
     strcpy(na_ptr1, s);
     strcpy(na_ptr2, reject);
@@ -477,7 +477,7 @@ void test_wasm_malloc(void** state)
     free_wasm(ptr);
     char* ptr1 = NULL;
     ptr1 = (char*)malloc_wasm(2 * sizeof(char));
-    char* na_ptr1 = wasm_runtime_addr_app_to_native(g_module_instance, (uint64_t)(uint32_t)ptr1);
+    char* na_ptr1 = wasm_runtime_addr_app_to_native(g_module_instance, (uintptr_t)ptr1);
 
     assert_non_null(ptr1);
 
@@ -491,7 +491,7 @@ void test_wasm_malloc(void** state)
     int* ptr2 = NULL;
     ptr2 = (int*)malloc_wasm(2 * sizeof(int));
     assert_non_null(ptr2);
-    int* na_ptr2 = wasm_runtime_addr_app_to_native(g_module_instance, (uint64_t)(uint32_t)ptr2);
+    int* na_ptr2 = wasm_runtime_addr_app_to_native(g_module_instance, (uintptr_t)ptr2);
 
     na_ptr2[0] = 1;
     na_ptr2[1] = 2;
@@ -566,14 +566,14 @@ void test_wasm_strdup(void** state)
 {
     char* ptr = strdup_wasm("abc");
     assert_non_null(ptr);
-    char* na_ptr = wasm_runtime_addr_app_to_native(g_module_instance, (uint64_t)(uint32_t)ptr);
+    char* na_ptr = wasm_runtime_addr_app_to_native(g_module_instance, (uintptr_t)ptr);
     assert_int_equal('a', na_ptr[0]);
     assert_int_equal('b', na_ptr[1]);
     assert_int_equal('c', na_ptr[2]);
 
     char* ptr1 = strdup_wasm("a1b2c! ?");
     assert_non_null(ptr1);
-    char* na_ptr1 = wasm_runtime_addr_app_to_native(g_module_instance, (uint64_t)(uint32_t)ptr1);
+    char* na_ptr1 = wasm_runtime_addr_app_to_native(g_module_instance, (uintptr_t)ptr1);
     assert_int_equal('a', na_ptr1[0]);
     assert_int_equal('1', na_ptr1[1]);
     assert_int_equal('2', na_ptr1[3]);
@@ -601,7 +601,7 @@ void test_wasm_strtol(void** state)
     /* case 1 */
     char* nptr1 = "123";
     char* ptr1 = (char*)malloc_wasm(strlen(nptr1) * sizeof(char));
-    char* na_ptr1 = (char*)wasm_runtime_addr_app_to_native(g_module_instance, (uint64_t)(uint32_t)ptr1);
+    char* na_ptr1 = (char*)wasm_runtime_addr_app_to_native(g_module_instance, (uintptr_t)ptr1);
     strcpy(na_ptr1, nptr1);
 
     assert_int_equal(123, strtol_wasm(ptr1, NULL, 10));
@@ -614,15 +614,15 @@ void test_wasm_strtol(void** state)
     char** endptr2 = (char**)malloc_wasm(sizeof(char*));
     char* ptr2 = (char*)malloc_wasm(strlen(nptr2) * sizeof(char));
 
-    char* na_ptr2 = (char*)wasm_runtime_addr_app_to_native(g_module_instance, (uint64_t)(uint32_t)ptr2);
-    char** na_endptr2 = (char**)wasm_runtime_addr_app_to_native(g_module_instance, (uint64_t)(uint32_t)endptr2);
+    char* na_ptr2 = (char*)wasm_runtime_addr_app_to_native(g_module_instance, (uintptr_t)ptr2);
+    char** na_endptr2 = (char**)wasm_runtime_addr_app_to_native(g_module_instance, (uintptr_t)endptr2);
     strcpy(na_ptr2, nptr2);
     *na_endptr2 = na_ptr2;
 
     assert_int_equal(123, strtol_wasm(ptr2, endptr2, 10));
 
     /* fi_ptr: the pointer of endptr after strtol */
-    char* fi_ptr2 = (char*)wasm_runtime_addr_app_to_native(g_module_instance, (uint64_t)(uint32_t)*na_endptr2);
+    char* fi_ptr2 = (char*)wasm_runtime_addr_app_to_native(g_module_instance, (uintptr_t)*na_endptr2);
     assert_int_equal('a', fi_ptr2[0]);
     assert_int_equal('b', fi_ptr2[1]);
     assert_int_equal('c', fi_ptr2[2]);
@@ -636,7 +636,7 @@ void test_wasm_strtoul(void** state)
     /* case 1 */
     char* nptr1 = "12345";
     char* ptr1 = (char*)malloc_wasm(strlen(nptr1) * sizeof(char));
-    char* na_ptr1 = (char*)wasm_runtime_addr_app_to_native(g_module_instance, (uint64_t)(uint32_t)ptr1);
+    char* na_ptr1 = (char*)wasm_runtime_addr_app_to_native(g_module_instance, (uintptr_t)ptr1);
     strcpy(na_ptr1, nptr1);
 
     assert_int_equal(12345, strtoul_wasm(ptr1, NULL, 10));
@@ -649,15 +649,15 @@ void test_wasm_strtoul(void** state)
     char** endptr2 = (char**)malloc_wasm(sizeof(char*));
     char* ptr2 = (char*)malloc_wasm(strlen(nptr2) * sizeof(char));
 
-    char* na_ptr2 = (char*)wasm_runtime_addr_app_to_native(g_module_instance, (uint64_t)(uint32_t)ptr2);
-    char** na_endptr2 = (char**)wasm_runtime_addr_app_to_native(g_module_instance, (uint64_t)(uint32_t)endptr2);
+    char* na_ptr2 = (char*)wasm_runtime_addr_app_to_native(g_module_instance, (uintptr_t)ptr2);
+    char** na_endptr2 = (char**)wasm_runtime_addr_app_to_native(g_module_instance, (uintptr_t)endptr2);
     strcpy(na_ptr2, nptr2);
     *na_endptr2 = na_ptr2;
 
     assert_int_equal(12453, strtoul_wasm(ptr2, endptr2, 10));
 
     /* fi_ptr2: the pointer of endptr after strtol */
-    char* fi_ptr2 = (char*)wasm_runtime_addr_app_to_native(g_module_instance, (uint64_t)(uint32_t)*na_endptr2);
+    char* fi_ptr2 = (char*)wasm_runtime_addr_app_to_native(g_module_instance, (uintptr_t)*na_endptr2);
     assert_int_equal('d', fi_ptr2[0]);
     assert_int_equal('e', fi_ptr2[1]);
     assert_int_equal('f', fi_ptr2[2]);
@@ -672,7 +672,7 @@ void test_wasm_memchr(void** state)
     const char* s = "Hello World!";
 
     char* ptr = (char*)malloc_wasm(strlen(s) * sizeof(char));
-    char* na_ptr = wasm_runtime_addr_app_to_native(g_module_instance, (uint64_t)(uint32_t)ptr);
+    char* na_ptr = wasm_runtime_addr_app_to_native(g_module_instance, (uintptr_t)ptr);
     strcpy(na_ptr, s);
 
     p = memchr_wasm(ptr, 'H', 5);
@@ -691,8 +691,8 @@ void test_wasm_strncasecmp(void** state)
     char* ptr1 = (char*)malloc_wasm(strlen(s1) * sizeof(char));
     char* ptr2 = (char*)malloc_wasm(strlen(s2) * sizeof(char));
 
-    char* na_ptr1 = wasm_runtime_addr_app_to_native(g_module_instance, (uint64_t)(uint32_t)ptr1);
-    char* na_ptr2 = wasm_runtime_addr_app_to_native(g_module_instance, (uint64_t)(uint32_t)ptr2);
+    char* na_ptr1 = wasm_runtime_addr_app_to_native(g_module_instance, (uintptr_t)ptr1);
+    char* na_ptr2 = wasm_runtime_addr_app_to_native(g_module_instance, (uintptr_t)ptr2);
 
     strcpy(na_ptr1, s1);
     strcpy(na_ptr2, s2);
@@ -711,8 +711,8 @@ void test_wasm_strncasecmp(void** state)
     char* ptr3 = (char*)malloc_wasm(strlen(s3) * sizeof(char));
     char* ptr4 = (char*)malloc_wasm(strlen(s4) * sizeof(char));
 
-    char* na_ptr3 = wasm_runtime_addr_app_to_native(g_module_instance, (uint64_t)(uint32_t)ptr3);
-    char* na_ptr4 = wasm_runtime_addr_app_to_native(g_module_instance, (uint64_t)(uint32_t)ptr4);
+    char* na_ptr3 = wasm_runtime_addr_app_to_native(g_module_instance, (uintptr_t)ptr3);
+    char* na_ptr4 = wasm_runtime_addr_app_to_native(g_module_instance, (uintptr_t)ptr4);
 
     strcpy(na_ptr3, s3);
     strcpy(na_ptr4, s4);
@@ -766,8 +766,8 @@ void test_wasm_strstr(void** state)
     char* ptr1 = (char*)malloc_wasm(strlen(haystack) * sizeof(char));
     char* ptr2 = (char*)malloc_wasm(strlen(needle) * sizeof(char));
 
-    char* na_ptr1 = wasm_runtime_addr_app_to_native(g_module_instance, (uint64_t)(uint32_t)ptr1);
-    char* na_ptr2 = wasm_runtime_addr_app_to_native(g_module_instance, (uint64_t)(uint32_t)ptr2);
+    char* na_ptr1 = wasm_runtime_addr_app_to_native(g_module_instance, (uintptr_t)ptr1);
+    char* na_ptr2 = wasm_runtime_addr_app_to_native(g_module_instance, (uintptr_t)ptr2);
 
     strcpy(na_ptr1, haystack);
     strcpy(na_ptr2, needle);
@@ -921,8 +921,8 @@ void test_wasm_nanosleep(void** state)
     struct timespec* req_ptr = (struct timespec*)malloc_wasm(sizeof(struct timespec));
     struct timespec* rem_ptr = (struct timespec*)malloc_wasm(sizeof(struct timespec));
 
-    struct timespec* na_req_ptr = wasm_runtime_addr_app_to_native(g_module_instance, (uint64_t)(uint32_t)req_ptr);
-    struct timespec* na_rem_ptr = wasm_runtime_addr_app_to_native(g_module_instance, (uint64_t)(uint32_t)rem_ptr);
+    struct timespec* na_req_ptr = wasm_runtime_addr_app_to_native(g_module_instance, (uintptr_t)req_ptr);
+    struct timespec* na_rem_ptr = wasm_runtime_addr_app_to_native(g_module_instance, (uintptr_t)rem_ptr);
 
     na_req_ptr->tv_sec = req.tv_sec;
     na_req_ptr->tv_nsec = req.tv_nsec;
@@ -949,7 +949,7 @@ void test_wasm_memcpy(void** state)
     src = "Hello World";
     dest = (char*)malloc_wasm(strlen(src) + 1);
     src_app = (char*)malloc_wasm(strlen(src) + 1);
-    src_native = (char*)wasm_runtime_addr_app_to_native(g_module_instance, (uint64_t)(uint32_t)src_app);
+    src_native = (char*)wasm_runtime_addr_app_to_native(g_module_instance, (uintptr_t)src_app);
     strcpy(src_native, src);
     dest_native = (char*)memcpy_wasm(dest, src_app, strlen(src) + 1);
     assert_int_equal(dest_native[0], 'H');
@@ -967,7 +967,7 @@ void test_wasm_memmove(void** state)
     char* src_native;
 
     src = (char*)malloc_wasm(10 * sizeof(char));
-    src_native = (char*)wasm_runtime_addr_app_to_native(g_module_instance, (uint64_t)(uint32_t)src);
+    src_native = (char*)wasm_runtime_addr_app_to_native(g_module_instance, (uintptr_t)src);
     strcpy(src_native, "abcdefghij");
 
     memmove_wasm(src + 2, src, 5);
@@ -983,7 +983,7 @@ void test_wasm_memset(void** state)
     char* dest;
     char* dest_native;
     dest = (char*)malloc_wasm(10 * sizeof(char));
-    dest_native = (char*)wasm_runtime_addr_app_to_native(g_module_instance, (uint64_t)(uint32_t)dest);
+    dest_native = (char*)wasm_runtime_addr_app_to_native(g_module_instance, (uintptr_t)dest);
 
     memset(dest_native, 'X', 10);
     memset_wasm(dest, 'A', 5);
@@ -1002,7 +1002,7 @@ void test_wasm_strchr(void** state)
 
     s = "Hello World";
     s_app = (char*)malloc_wasm(strlen(s) + 1);
-    s_native = (char*)wasm_runtime_addr_app_to_native(g_module_instance, (uint64_t)(uint32_t)s_app);
+    s_native = (char*)wasm_runtime_addr_app_to_native(g_module_instance, (uintptr_t)s_app);
     strcpy(s_native, s);
     result = strchr_wasm(s_app, 'W');
     assert_int_equal(*result, 'W');
@@ -1025,8 +1025,8 @@ void test_wasm_strcmp(void** state)
     s2 = "Hello World";
     s1_app = (char*)malloc_wasm(strlen(s1) + 1);
     s2_app = (char*)malloc_wasm(strlen(s2) + 1);
-    s1_native = (char*)wasm_runtime_addr_app_to_native(g_module_instance, (uint64_t)(uint32_t)s1_app);
-    s2_native = (char*)wasm_runtime_addr_app_to_native(g_module_instance, (uint64_t)(uint32_t)s2_app);
+    s1_native = (char*)wasm_runtime_addr_app_to_native(g_module_instance, (uintptr_t)s1_app);
+    s2_native = (char*)wasm_runtime_addr_app_to_native(g_module_instance, (uintptr_t)s2_app);
     strcpy(s1_native, s1);
     strcpy(s2_native, s2);
     result = strcmp_wasm(s1_app, s2_app);
@@ -1051,8 +1051,8 @@ void test_wasm_strncmp(void** state)
     s2 = "Hello Wasm";
     s1_app = (char*)malloc_wasm(strlen(s1) + 1);
     s2_app = (char*)malloc_wasm(strlen(s2) + 1);
-    s1_native = (char*)wasm_runtime_addr_app_to_native(g_module_instance, (uint64_t)(uint32_t)s1_app);
-    s2_native = (char*)wasm_runtime_addr_app_to_native(g_module_instance, (uint64_t)(uint32_t)s2_app);
+    s1_native = (char*)wasm_runtime_addr_app_to_native(g_module_instance, (uintptr_t)s1_app);
+    s2_native = (char*)wasm_runtime_addr_app_to_native(g_module_instance, (uintptr_t)s2_app);
     strcpy(s1_native, s1);
     strcpy(s2_native, s2);
     result = strncmp_wasm(s1_app, s2_app, 5);
@@ -1075,12 +1075,12 @@ void test_wasm_strcpy(void** state)
 
     src = "Hello World";
     src_app = (char*)malloc_wasm(strlen(src) + 1);
-    src_native = (char*)wasm_runtime_addr_app_to_native(g_module_instance, (uint64_t)(uint32_t)src_app);
+    src_native = (char*)wasm_runtime_addr_app_to_native(g_module_instance, (uintptr_t)src_app);
     memcpy(src_native, src, strlen(src) + 1);
     dest = (char*)malloc_wasm(strlen(src) + 1);
 
     strcpy_wasm(dest, src_app);
-    dest_native = (char*)wasm_runtime_addr_app_to_native(g_module_instance, (uint64_t)(uint32_t)dest);
+    dest_native = (char*)wasm_runtime_addr_app_to_native(g_module_instance, (uintptr_t)dest);
     assert_string_equal(dest_native, src);
 
     free_wasm(src_app);
@@ -1098,7 +1098,7 @@ void test_wasm_strncpy(void** state)
 
     src = "Hello_World";
     src_app = (char*)malloc_wasm(strlen(src) + 1);
-    src_native = (char*)wasm_runtime_addr_app_to_native(g_module_instance, (uint64_t)(uint32_t)src_app);
+    src_native = (char*)wasm_runtime_addr_app_to_native(g_module_instance, (uintptr_t)src_app);
     memcpy(src_native, src, strlen(src) + 1);
     dest = (char*)malloc_wasm(strlen(src) + 1);
     dest_native = (char*)strncpy_wasm(dest, src_app, 4);
@@ -1117,7 +1117,7 @@ void test_wasm_strlen(void** state)
 
     s = "Hello World";
     s_app = (char*)malloc_wasm(strlen(s) + 1);
-    s_native = (char*)wasm_runtime_addr_app_to_native(g_module_instance, (uint64_t)(uint32_t)s_app);
+    s_native = (char*)wasm_runtime_addr_app_to_native(g_module_instance, (uintptr_t)s_app);
     strcpy(s_native, s);
     result = strlen_wasm(s_app);
     assert_int_equal(result, 11);
