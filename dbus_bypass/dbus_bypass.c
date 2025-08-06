@@ -1176,6 +1176,47 @@ void glue_dbus_message_iter_get_basic(wasm_exec_env_t env, uintptr_t parm1,
 }
 
 #endif /* GLUE_FUNCTION_dbus_message_iter_get_basic */
+
+#ifndef GLUE_FUNCTION_dbus_bus_get
+#define GLUE_FUNCTION_dbus_bus_get
+uintptr_t glue_dbus_bus_get(wasm_exec_env_t env, uintptr_t parm1, uintptr_t parm2)
+{
+    wasm_module_inst_t module_inst = get_module_inst(env);
+    uintptr_t ret;
+    void* addr_app = addr_app_to_native((uintptr_t)NULL);
+    if ((void*)parm2 == addr_app)
+        parm2 = (uintptr_t)NULL;
+
+    DBusError* error = (DBusError*)parm2;
+    /* Since dbus_bus_get needs error->name and error->message to be NULL,
+     * it's no need to convert them to native address first.              */
+    ret = addr_native_to_app((void*)dbus_bus_get((DBusBusType)parm1, (DBusError*)parm2));
+    error->name = addr_native_to_app((void*)error->name);
+    error->message = addr_native_to_app((void*)error->message);
+    return ret;
+}
+
+#endif /* GLUE_FUNCTION_dbus_bus_get */
+
+#ifndef GLUE_FUNCTION_dbus_error_free
+#define GLUE_FUNCTION_dbus_error_free
+void glue_dbus_error_free(wasm_exec_env_t env, uintptr_t parm1)
+{
+    wasm_module_inst_t module_inst = get_module_inst(env);
+    DBusError* error = (DBusError*)parm1;
+    uintptr_t ret;
+    void* addr_app = addr_app_to_native((uintptr_t)NULL);
+    if ((void*)parm1 == addr_app)
+        parm1 = (uintptr_t)NULL;
+
+    error->name = addr_app_to_native((uintptr_t)error->name);
+    error->message = addr_app_to_native((uintptr_t)error->message);
+
+    dbus_error_free((DBusError*)parm1);
+}
+
+#endif /* GLUE_FUNCTION_dbus_error_free */
+
 /****************************************************************************
  * Included Files
  ****************************************************************************/
