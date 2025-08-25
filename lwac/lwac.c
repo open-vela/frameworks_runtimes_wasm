@@ -45,6 +45,7 @@ typedef struct {
     int heap_size; // Heap size in bytes
     int no_mmap; // Flag to use malloc instead of mmap
     char* entry_func; // Entry function name
+    int show_ps; // Flag to show running modules
     // Add more parameters here as needed
 } lwac_args_t;
 
@@ -57,6 +58,7 @@ typedef struct {
     int stack_size;
     int heap_size;
     const char* entry_func;
+    const char* file_path;
 } lwac_exec_params_t;
 
 /**
@@ -140,6 +142,7 @@ static void print_usage(void)
     printf("  --stack-size n   Specify stack size (integer value, default: %d)\n", DEFAULT_APP_STACK_SIZE);
     printf("  --heap-size n    Specify heap size (integer value, default: %d)\n", DEFAULT_APP_HEAP_SIZE);
     printf("  --no-mmap        Use malloc instead of mmap to load file\n");
+    printf("  --ps             Show running modules\n");
     printf("  -h               Display this help message\n");
 }
 
@@ -160,18 +163,20 @@ static int parse_arguments(int argc, char* argv[], lwac_args_t* args)
     args->heap_size = DEFAULT_APP_HEAP_SIZE; // Default heap size
     args->no_mmap = 0; // Default to using mmap
     args->entry_func = NULL; // Default to NULL (auto-detect)
+    args->show_ps = 0; // Default to not show ps
 
     static struct option long_options[] = {
         { "stack-size", required_argument, 0, 's' },
         { "heap-size", required_argument, 0, 'e' },
         { "no-mmap", no_argument, 0, 'n' },
+        { "ps", no_argument, 0, 'p' },
         { 0, 0, 0, 0 }
     };
 
     int option_index = 0;
 
     // Parse command line options using getopt_long
-    while ((opt = getopt_long(argc, argv, "m:f:h", long_options, &option_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, "m:f:ph", long_options, &option_index)) != -1) {
         switch (opt) {
         case 'm':
             args->filename = optarg;
@@ -199,6 +204,9 @@ static int parse_arguments(int argc, char* argv[], lwac_args_t* args)
         case 'n':
             args->no_mmap = 1;
             break;
+        case 'p':
+            args->show_ps = 1;
+            break;
         case 'h':
             print_usage();
             return 1;
@@ -219,7 +227,7 @@ static int parse_arguments(int argc, char* argv[], lwac_args_t* args)
     }
 
     // Check if we have a filename
-    if (args->filename == NULL) {
+    if (args->filename == NULL && !args->show_ps) {
         printf("No input file specified.\n");
         print_usage();
         return -1;
@@ -386,6 +394,18 @@ static int execute_wasm_module(const lwac_exec_params_t* params)
         }
     }
 
+    // Register the module in the info system after entry function lookup OK
+    wasm_module_info_t* module_info = NULL;
+    module_info = lwac__register_wasm_module(params->file_path ? params->file_path : "unknown",
+        params->stack_size,
+        params->heap_size,
+        module,
+        module_inst,
+        exec_env);
+    if (!module_info) {
+        printf("Warning: Failed to register module in info system\n");
+    }
+
     if (!wasm_runtime_call_wasm(exec_env, entry_func, 2, argv_buf)) {
         printf("Error executing entry function: %s\n",
             wasm_runtime_get_exception(module_inst));
@@ -397,6 +417,11 @@ static int execute_wasm_module(const lwac_exec_params_t* params)
 cleanup_env:
     // Clean up execution environment
     wasm_runtime_destroy_exec_env(exec_env);
+
+    // Unregister the module from the info system
+    if (module_inst) {
+        lwac__unregister_wasm_module(module_inst);
+    }
 
 cleanup_instance:
     // Destroy module instance
@@ -422,6 +447,13 @@ int main(int argc, char* argv[])
         goto out;
     }
 
+    // Handle ps option
+    if (args.show_ps) {
+        lwac__print_running_modules();
+        ret = EXIT_SUCCESS;
+        goto out;
+    }
+
     file_content = load_file(args.filename, &file_size, args.no_mmap);
     if (file_content == NULL) {
         goto out;
@@ -439,6 +471,7 @@ int main(int argc, char* argv[])
     exec_params.stack_size = args.stack_size;
     exec_params.heap_size = args.heap_size;
     exec_params.entry_func = args.entry_func;
+    exec_params.file_path = args.filename;
 
     // Check if the file is XIP compatible when using mmap
     if (!wasm_runtime_is_xip_file(exec_params.file_content, exec_params.file_size)) {

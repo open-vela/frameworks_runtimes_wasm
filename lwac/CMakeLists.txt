@@ -20,6 +20,7 @@ if(CONFIG_WASM_LWAC)
     lwac
     SRCS
     lwac.c
+    lwac_module_registry.c
     loader.c
     STACKSIZE
     ${CONFIG_WASM_LWAC_STACKSIZE}
