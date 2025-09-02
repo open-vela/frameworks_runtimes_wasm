@@ -31,4 +31,19 @@ CSRCS = lwac_module_registry.c
 
 CFLAGS += -I$(APPDIR)/interpreters/wamr
 
+ifneq ($(CONFIG_WASM_LWAC_TEST),)
+
+PROGNAME += lwac_test
+PRIORITY += $(CONFIG_WASM_LWAC_TEST_PRIORITY)
+STACKSIZE += $(CONFIG_WASM_LWAC_TEST_STACKSIZE)
+MODULE += $(CONFIG_WASM_LWAC_TEST)
+
+MAINSRC += tests/lwac_test.c
+
+# Build WASM test modules
+context::
+	$(MAKE) -C tests/test_wasm_modules install APPDIR=$(APPDIR) WASI_SDK_PATH=$(WASI_SDK_PATH) AOT_COMPILE=$(CONFIG_WASM_LWAC_TEST_AOT_COMPILE) AOT_FLAGS=$(CONFIG_WASM_LWAC_TEST_AOT_FLAGS)
+
+endif
+
 include $(APPDIR)/Application.mk

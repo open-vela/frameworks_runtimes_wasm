@@ -1,0 +1,3 @@
+# Ignore compiled WebAssembly and AOT files
+*.wasm
+*.aot
