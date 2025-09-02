@@ -18,24 +18,26 @@ include $(APPDIR)/Make.defs
 
 IWASM_ROOT := $(APPDIR)/interpreters/wamr
 
-CSRCS += xtables_bypass.c
+CFLAGS += -I$(APPDIR)/include/wireless
+
+CSRCS += wapi.c
 
 CFLAGS += -Wno-unused-variable -Wno-int-conversion
 
-WAMR_MODULE_NAME = xtables_bypass
+WAMR_MODULE_NAME = wapi
 
-GLUECSRCS = xtables_glue.c
-CSVSRCS += $(APPDIR)/external/connman/connman.csv
+GLUECSRCS = wapi_glue.c
+CSVSRCS += $(APPDIR)/wireless/wapi/wapi.csv
 
 $(GLUECSRCS): $(CSVSRCS) $(APPDIR)/../frameworks/runtimes/wasm/tools/mkwamrglue.py
 	$(Q)  $(APPDIR)/../frameworks/runtimes/wasm/tools/mkwamrglue.py \
-	-i $(APPDIR)/wireless/connman/connman.csv -o xtables_glue.c
-	gcc -shared -fPIC -o signature_xtables.so signature_xtables_glue.c -I$(IWASM_ROOT)
+	-i $(APPDIR)/wireless/wapi/wapi.csv -o wapi_glue.c
+	gcc -shared -fPIC -o signature_wapi.so signature_wapi_glue.c -I$(IWASM_ROOT)
 
 depend:: $(GLUECSRCS)
 
 distclean::
-	$(call DELFILE, xtables_glue.c)
+	$(call DELFILE, wapi_glue.c)
 
 include $(APPDIR)/interpreters/wamr/Module.mk
 include $(APPDIR)/Application.mk

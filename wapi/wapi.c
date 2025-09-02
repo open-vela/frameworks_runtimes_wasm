@@ -306,7 +306,7 @@ uintptr_t glue_wapi_save_config(wasm_exec_env_t env, uintptr_t parm1, uintptr_t 
  * Public Functions
  ****************************************************************************/
 
-bool wamr_module_wapi_bypass_register(void)
+bool wamr_module_wapi_register(void)
 {
     bool ret;
 

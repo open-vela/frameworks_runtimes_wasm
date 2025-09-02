@@ -14,6 +14,6 @@
 # limitations under the License.
 #
 
-config WASM_NETLIB_BYPASS
-    bool "Enable bypass netlib"
-    default n
+ifneq ($(CONFIG_WASM_NETLIB),)
+CONFIGURED_APPS += $(APPDIR)/frameworks/runtimes/wasm/netlib
+endif # CONFIG_WASM_NETLIB

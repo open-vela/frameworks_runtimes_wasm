@@ -1,5 +1,5 @@
 # ##############################################################################
-# frameworks/runtimes/wasm/xtables_bypass/CMakeLists.txt
+# frameworks/runtimes/wasm/wapi_bypass/CMakeLists.txt
 #
 # Licensed to the Apache Software Foundation (ASF) under one or more contributor
 # license agreements.  See the NOTICE file distributed with this work for
@@ -18,24 +18,27 @@
 #
 # ##############################################################################
 
-if(CONFIG_WASM_XTABLES_BYPASS)
+if(CONFIG_WASM_WAPI)
+  set(INCDIR)
+  list(APPEND INCDIR ${NUTTX_APPS_DIR}/include/wireless)
+  list(APPEND INCDIR ${NUTTX_APPS_DIR}/netutils/cjson/cJSON)
 
   add_custom_target(
-    gen_xtables_glue_sources
+    gen_wapi_glue_sources
     COMMAND ${NUTTX_APPS_DIR}/../frameworks/runtimes/wasm/tools/mkwamrglue.py -i
-            ${NUTTX_APPS_DIR}/external/connman/connman.csv -o xtables_glue.c)
+            ${NUTTX_APPS_DIR}/wireless/wapi/wapi.csv -o wapi_glue.c)
 
-  add_dependencies(wamr gen_xtables_glue_sources)
+  add_dependencies(wamr gen_wapi_glue_sources)
 
-  if(NOT EXISTS {CMAKE_CURRENT_BINARY_DIR}/xtables_bypass.c)
+  if(NOT EXISTS {CMAKE_CURRENT_BINARY_DIR}/wapi.c)
     file(
-      COPY ${NUTTX_APPS_DIR}/frameworks/runtimes/wasm/xtables_bypass/xtables_bypass.c
+      COPY ${NUTTX_APPS_DIR}/frameworks/runtimes/wasm/wapi/wapi.c
       DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
   endif()
 
   # register WAMR mod
-  target_sources(wamr PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/xtables_bypass.c)
+  target_sources(wamr PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/wapi.c)
   target_include_directories(wamr PRIVATE ${INCDIR})
-  nuttx_add_wamrmod(MODS xtables_bypass)
+  nuttx_add_wamrmod(MODS wapi)
 
 endif()

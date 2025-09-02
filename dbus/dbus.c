@@ -1730,7 +1730,7 @@ void glue_dbus_error_free(wasm_exec_env_t env, uintptr_t parm1)
  * Public Functions
  ****************************************************************************/
 
-bool wamr_module_dbus_bypass_register(void)
+bool wamr_module_dbus_register(void)
 {
     bool ret;
 

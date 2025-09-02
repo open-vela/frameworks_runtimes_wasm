@@ -18,19 +18,19 @@
 #
 # ##############################################################################
 
-if(CONFIG_WASM_NETLIB_BYPASS)
+if(CONFIG_WASM_NETLIB)
   set(INCDIR)
   list(APPEND INCDIR ${NUTTX_APPS_DIR}/include/netutils)
 
-  if(NOT EXISTS {CMAKE_CURRENT_BINARY_DIR}/netlib_bypass.c)
+  if(NOT EXISTS {CMAKE_CURRENT_BINARY_DIR}/netlib.c)
     file(
-      COPY ${NUTTX_APPS_DIR}/frameworks/runtimes/wasm/netlib_bypass/netlib_bypass.c
+      COPY ${NUTTX_APPS_DIR}/frameworks/runtimes/wasm/netlib/netlib.c
       DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
   endif()
 
   # register WAMR mod
-  target_sources(wamr PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/netlib_bypass.c)
+  target_sources(wamr PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/netlib.c)
   target_include_directories(wamr PRIVATE ${INCDIR})
-  nuttx_add_wamrmod(MODS netlib_bypass)
+  nuttx_add_wamrmod(MODS netlib)
 
 endif()

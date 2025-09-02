@@ -30,51 +30,87 @@
 #include <sys/param.h>
 #include <sys/types.h>
 
-#include "netutils/xtables.h"
+#include <netlib.h>
 
 /****************************************************************************
  * Private Functions
  ****************************************************************************/
 
 /****************************************************************************
- * Name: xtables_event_stream_extract
+ * Name: netlib_event_stream_extract
  *
  * Description:
  *   Extract the next event from the stream.
  *
  ****************************************************************************/
-#ifndef GLUE_FUNCTION_xtables_find_match
-#define GLUE_FUNCTION_xtables_find_match
-uintptr_t glue_xtables_find_match(wasm_exec_env_t env, uintptr_t parm1, uintptr_t parm2, uintptr_t parm3)
+#ifndef GLUE_FUNCTION_netlib_ifup
+#define GLUE_FUNCTION_netlib_ifup
+uintptr_t glue_netlib_ifup(wasm_exec_env_t env, uintptr_t parm1)
 {
     wasm_module_inst_t module_inst = get_module_inst(env);
     uintptr_t ret;
 
-    /* Compatible with the xtables interface */
-    ret = addr_native_to_app((void*)0);
+    /* Compatible with the netlib interface */
+    void* ifname = addr_app_to_native((uintptr_t)NULL);
+    if ((void*)parm1 == ifname)
+        parm1 = (uintptr_t)NULL;
+
+    ret = netlib_ifup((const char*)parm1);
 
     return ret;
 }
 
-#endif /* GLUE_FUNCTION_xtables_find_match */
+#endif /* GLUE_FUNCTION_netlib_ifup */
 
-/****************************************************************************
- * Included Files
- ****************************************************************************/
+#ifndef GLUE_FUNCTION_netlib_set_ipv4dnsaddr
+#define GLUE_FUNCTION_netlib_set_ipv4dnsaddr
+uintptr_t glue_netlib_set_ipv4dnsaddr(wasm_exec_env_t env, uintptr_t parm1)
+{
+    wasm_module_inst_t module_inst = get_module_inst(env);
+    uintptr_t ret;
 
-#include "xtables_glue.c"
+    /* Compatible with the netlib interface */
+    void* addr_app = addr_app_to_native((uintptr_t)NULL);
+    if ((void*)parm1 == addr_app)
+        parm1 = (uintptr_t)NULL;
+
+    ret = netlib_set_ipv4dnsaddr((FAR const struct in_addr*)parm1);
+
+    return ret;
+}
+
+#endif /* GLUE_FUNCTION_netlib_set_ipv4dnsaddr */
+
+#ifndef native_function
+#define native_function(func_name, signature)         \
+    {                                                 \
+#func_name, glue_##func_name, signature, NULL \
+    }
+
+#endif
+static NativeSymbol g_netlib_native_symbols[] = {
+#ifndef GLUE_ENTRY_netlib_ifup
+#define GLUE_ENTRY_netlib_ifup
+    native_function(netlib_ifup, "($)i"),
+#endif /* GLUE_ENTRY_netlib_ifup */
+
+#ifndef GLUE_ENTRY_netlib_set_ipv4dnsaddr
+#define GLUE_ENTRY_netlib_set_ipv4dnsaddr
+    native_function(netlib_set_ipv4dnsaddr, "(*)i"),
+#endif /* GLUE_ENTRY_netlib_set_ipv4dnsaddr */
+};
 
 /****************************************************************************
  * Public Functions
  ****************************************************************************/
 
-bool wamr_module_xtables_bypass_register(void)
+bool wamr_module_netlib_register(void)
 {
     bool ret;
 
     /* Add extra init hook here */
 
-    ret = wasm_runtime_register_natives("env", g_connman_native_symbols, nitems(g_connman_native_symbols));
+    ret = wasm_runtime_register_natives("env", g_netlib_native_symbols, nitems(g_netlib_native_symbols));
     if (!ret) {
         return ret;
     }

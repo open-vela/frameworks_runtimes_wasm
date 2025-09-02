@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2024 Xiaomi Corporation
+# Copyright (C) 2025 Xiaomi Corporation
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,15 +14,6 @@
 # limitations under the License.
 #
 
-include $(APPDIR)/Make.defs
-
-IWASM_ROOT := $(APPDIR)/interpreters/wamr
-
-CSRCS += netlib_bypass.c
-
-CFLAGS += -Wno-unused-variable -Wno-int-conversion
-
-WAMR_MODULE_NAME = netlib_bypass
-
-include $(APPDIR)/interpreters/wamr/Module.mk
-include $(APPDIR)/Application.mk
+config WASM_XTABLES
+    bool "Enable WASM xtables"
+    default n

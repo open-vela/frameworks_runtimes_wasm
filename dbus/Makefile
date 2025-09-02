@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2025 Xiaomi Corporation
+# Copyright (C) 2024 Xiaomi Corporation
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,26 +18,30 @@ include $(APPDIR)/Make.defs
 
 IWASM_ROOT := $(APPDIR)/interpreters/wamr
 
-CFLAGS += -I$(APPDIR)/include/wireless
+CFLAGS += -I$(APPDIR)/external/glib/glib
+CFLAGS += -I$(APPDIR)/external/dbus/dbus/dbus
+CFLAGS += -I$(APPDIR)/external/dbus/dbus
+CFLAGS += -I$(APPDIR)/frameworks/system/utils/gdbus
 
-CSRCS += wapi_bypass.c
+CSRCS += dbus.c
 
 CFLAGS += -Wno-unused-variable -Wno-int-conversion
 
-WAMR_MODULE_NAME = wapi_bypass
+WAMR_MODULE_NAME = dbus
 
-GLUECSRCS = wapi_glue.c
-CSVSRCS += $(APPDIR)/wireless/wapi/wapi.csv
+GLUECSRCS = dbus_glue.c
+CSVSRCS += $(APPDIR)/external/dbus/dbus.csv
 
-$(GLUECSRCS): $(CSVSRCS) $(APPDIR)/../frameworks/runtimes/wasm/tools/mkwamrglue.py
-	$(Q)  $(APPDIR)/../frameworks/runtimes/wasm/tools/mkwamrglue.py \
-	-i $(APPDIR)/wireless/wapi/wapi.csv -o wapi_glue.c
-	gcc -shared -fPIC -o signature_wapi.so signature_wapi_glue.c -I$(IWASM_ROOT)
+$(GLUECSRCS): $(CSVSRCS) ../tools/mkwamrglue.py
+	$(Q) ../tools/mkwamrglue.py -i $(APPDIR)/external/dbus/dbus.csv -o dbus_glue.c
+	gcc -shared -fPIC -o signature_dbus.so signature_dbus_glue.c -I$(IWASM_ROOT)
 
 depend:: $(GLUECSRCS)
 
 distclean::
-	$(call DELFILE, wapi_glue.c)
+	$(call DELFILE, dbus_glue.c)
+	$(call DELFILE, signature_dbus.so)
+	$(call DELFILE, signature_dbus_glue.c)
 
 include $(APPDIR)/interpreters/wamr/Module.mk
 include $(APPDIR)/Application.mk

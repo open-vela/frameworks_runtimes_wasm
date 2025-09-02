@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2025 Xiaomi Corporation
+# Copyright (C) 2024 Xiaomi Corporation
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,6 +14,6 @@
 # limitations under the License.
 #
 
-config WASM_XTABLES_BYPASS
-    bool "Enable bypass xtables"
+config WASM_NETLIB
+    bool "Enable WASM netlib"
     default n
