@@ -27,10 +27,9 @@
 #include <unistd.h>
 
 #include "lwac_internal.h"
+#include "lwac_module_registry.h"
 
-#ifdef CONFIG_INTERPRETERS_WAMR_EXTERNAL_MODULE_REGISTRY
 #include "wamr_external_module_proto.h"
-#endif
 
 // Default application stack and heap sizes
 #define DEFAULT_APP_STACK_SIZE CONFIG_WASM_LWAC_APP_DEFAULT_STACK_SIZE
@@ -79,11 +78,9 @@ static pthread_mutex_t g_wasm_runtime_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 typedef bool (*module_register_t)(void);
 
-#ifdef CONFIG_INTERPRETERS_WAMR_EXTERNAL_MODULE_REGISTRY
 static const module_register_t g_wamr_modules[] = {
 #include "wamr_external_module_list.h"
 };
-#endif
 
 // Function to increment reference count and initialize runtime if needed
 static int lwac_runtime_init(void)
@@ -99,7 +96,6 @@ static int lwac_runtime_init(void)
             goto unlock;
         }
 
-#ifdef CONFIG_INTERPRETERS_WAMR_EXTERNAL_MODULE_REGISTRY
         for (int i = 0; i < sizeof(g_wamr_modules) / sizeof(g_wamr_modules[0]); i++) {
             if (!g_wamr_modules[i]()) {
                 printf("Error: failed to register external module %d\n", i);
@@ -107,7 +103,6 @@ static int lwac_runtime_init(void)
                 goto unlock;
             }
         }
-#endif
     }
 
     g_wasm_runtime_ref_count++;
@@ -270,8 +265,8 @@ static void* load_file(const char* filename, int* size, int use_malloc)
         // Allocate memory and read the file
         file_content = malloc(file_stat.st_size);
         if (file_content == NULL) {
-            printf("Error allocating memory for file (size: %ld bytes): errno=%d\n",
-                file_stat.st_size, errno);
+            printf("Error allocating memory for file (size: %lld bytes): errno=%d\n",
+                (long long)file_stat.st_size, errno);
             close(fd);
             return NULL;
         }
@@ -279,8 +274,8 @@ static void* load_file(const char* filename, int* size, int use_malloc)
         // Read the entire file into the allocated memory
         ssize_t bytes_read = read(fd, file_content, file_stat.st_size);
         if (bytes_read != file_stat.st_size) {
-            printf("Error reading file, expected %ld bytes, got %d: errno=%d\n",
-                file_stat.st_size, (int)bytes_read, errno);
+            printf("Error reading file, expected %lld bytes, got %d: errno=%d\n",
+                (long long)file_stat.st_size, (int)bytes_read, errno);
             free(file_content);
             close(fd);
             return NULL;

@@ -6,7 +6,7 @@
 extern int usleep(unsigned int usec);
 
 // Export a simple main function that returns a success code
-__attribute__((export_name("main"))) int main(void)
+int main(void)
 {
     return 42; // Return a recognizable success code
 }

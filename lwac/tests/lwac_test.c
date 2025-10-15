@@ -39,12 +39,8 @@
 #define DEFAULT_MODULE_PATH CONFIG_WASM_LWAC_TEST_MODULE_PATH
 #define MAX_CMD_LEN 128
 
-/* Determine file extension based on AOT compilation setting */
-#ifdef CONFIG_WASM_LWAC_TEST_AOT_COMPILE
-#define MODULE_EXT ".aot"
-#else
+/* Use .wasm extension for modules */
 #define MODULE_EXT ".wasm"
-#endif
 
 /****************************************************************************
  * Private Data
@@ -99,7 +95,7 @@ static int run_basic_execution_test(void)
     printf("Running basic execution test...\n");
 
     /* Execute simple_test module with appropriate extension */
-    snprintf(cmd, sizeof(cmd), "lwac -m %s/simple_test%s", DEFAULT_MODULE_PATH, MODULE_EXT);
+    snprintf(cmd, sizeof(cmd), "lwac --no-mmap -m %s/simple_test%s", DEFAULT_MODULE_PATH, MODULE_EXT);
     printf("Executing: %s\n", cmd);
 
     ret = system(cmd);
@@ -124,7 +120,7 @@ static int run_argument_parsing_test(void)
     printf("Running argument parsing test...\n");
 
     /* Test with custom arguments */
-    snprintf(cmd, sizeof(cmd), "lwac -m %s/simple_test%s arg1 arg2", DEFAULT_MODULE_PATH, MODULE_EXT);
+    snprintf(cmd, sizeof(cmd), "lwac --no-mmap -m %s/simple_test%s arg1 arg2", DEFAULT_MODULE_PATH, MODULE_EXT);
     printf("Executing: %s\n", cmd);
 
     ret = system(cmd);
@@ -134,7 +130,7 @@ static int run_argument_parsing_test(void)
     }
 
     /* Test with stack size option */
-    snprintf(cmd, sizeof(cmd), "lwac -m %s/simple_test%s --stack-size=8192", DEFAULT_MODULE_PATH, MODULE_EXT);
+    snprintf(cmd, sizeof(cmd), "lwac --no-mmap -m %s/simple_test%s --stack-size=8192", DEFAULT_MODULE_PATH, MODULE_EXT);
     printf("Executing: %s\n", cmd);
 
     ret = system(cmd);
@@ -170,7 +166,7 @@ static int run_module_registry_test(void)
 
     /* Test execution with registry tracking */
     /* First start the module in background */
-    snprintf(cmd, sizeof(cmd), "lwac -m %s/simple_test%s &", DEFAULT_MODULE_PATH, MODULE_EXT);
+    snprintf(cmd, sizeof(cmd), "lwac --no-mmap -m %s/simple_test%s &", DEFAULT_MODULE_PATH, MODULE_EXT);
     printf("Executing: %s\n", cmd);
 
     ret = system(cmd);
@@ -204,8 +200,8 @@ static int run_file_loading_test(void)
 
     printf("Running file loading test...\n");
 
-    /* Test mmap-based loading (default) */
-    snprintf(cmd, sizeof(cmd), "lwac -m %s/simple_test%s", DEFAULT_MODULE_PATH, MODULE_EXT);
+    /* Test RAM-based loading */
+    snprintf(cmd, sizeof(cmd), "lwac --no-mmap -m %s/simple_test%s", DEFAULT_MODULE_PATH, MODULE_EXT);
     printf("Executing: %s\n", cmd);
 
     ret = system(cmd);

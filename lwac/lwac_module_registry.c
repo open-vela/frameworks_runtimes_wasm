@@ -197,7 +197,7 @@ void lwac__print_running_modules(void)
 #ifdef CONFIG_INTERPRETERS_WAMR_MEMORY_PROFILING
     wasm_aux_stack_info_t aux_stack_info;
 #endif
-    wasm_heap_info_t heap_info;
+    mem_alloc_info_t heap_info;
 
     pthread_rwlock_rdlock(&g_module_list_rwlock);
 
@@ -214,7 +214,7 @@ void lwac__print_running_modules(void)
         int minutes = (elapsed_seconds % 3600) / 60;
         int seconds = elapsed_seconds % 60;
 
-        bool heap_info_available = wasm_runtime_get_heap_info(current->exec_env, &heap_info);
+        bool heap_info_available = wasm_runtime_get_mem_alloc_info(&heap_info);
 
         if (!heap_info_available) {
             printf("%-3lu %-40s %-8d %-12s %-12s %-12s %-12s %02d:%02d:%02d\n",
@@ -260,8 +260,8 @@ void lwac__print_running_modules(void)
             current->name,
             current->stack_size,
             (unsigned long)heap_info.total_size,
-            (unsigned long)heap_info.used_size,
-            (unsigned long)heap_info.free_size,
+            (unsigned long)(heap_info.total_size - heap_info.total_free_size),
+            (unsigned long)heap_info.total_free_size,
             "N/A",
             hours, minutes, seconds);
 #endif

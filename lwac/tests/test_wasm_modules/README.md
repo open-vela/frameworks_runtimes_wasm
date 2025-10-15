@@ -22,32 +22,29 @@ Entry point test module compiled from `entry_point_test.c` that provides:
 
 ## Compilation
 
-The modules are compiled using wasi-sdk with baremetal wasm32 target:
+The modules are compiled using the NuttX WASM build system with CMake and wasi-sdk:
 
 ```bash
-# Compile all modules
-make all
+# Build from the project root directory
+make -C nuttx
 
-# Compile specific module
-make simple_test.wasm
-make entry_point_test.wasm
-
-# Clean compiled files
-make clean
-
-# Check if wasi-sdk is available
-make check
+# Or build specifically for WASM modules
+cd nuttx && make cmake_build
 ```
+
+The build system will automatically:
+- Compile all modules using `wasm_add_application`
+- Apply WASI SDK toolchain and flags
+- Generate optimized `.wasm` files
+- Install modules to `${TOPBINDIR}/wasm/`
 
 ## Compilation Details
 
-**Target:** `wasm32` (baremetal WebAssembly)
-**Flags:**
-- `--target=wasm32` - Target baremetal WebAssembly
-- `-nostdlib` - Don't link standard C library
-- `-Wl,--no-entry` - Don't require _start entry point
-- `-Wl,--export-all` - Export all functions for LWAC to call
-- `-O2` - Optimize for size and performance
+**Build System:** CMake with `wasm_add_application`
+**Target:** `wasm32-wasi` (WebAssembly with WASI support)
+**Stack Size:** 2048 bytes
+**Initial Memory:** 65536 bytes (1 page)
+**Optimization:** Applied automatically via `wasm-opt -Oz --enable-bulk-memory`
 
 ## Usage in Tests
 
@@ -61,14 +58,16 @@ These modules are used by the LWAC test framework to verify:
 
 ## Prerequisites
 
-- wasi-sdk installed and `clang` available in PATH
-- LLVM WebAssembly backend support
+- WASI SDK installed and `WASI_SDK_PATH` environment variable set
+- WASM toolchain installed and `WASM_TOOLCHAIN_PATH` environment variable set
+- NuttX build system configured with WASM support enabled
 
 ## Module Design
 
 The modules are designed to be minimal and self-contained:
-- No external dependencies
-- No standard library usage
-- Export all functions for testing
+- WASI-compatible (no direct NuttX API calls)
+- Minimal external dependencies (only `usleep` in simple_test)
+- Export all functions for testing using `__attribute__((export_name))`
 - Return predictable values for verification
 - Use stack space for memory testing
+- Compatible with both interpreter and AOT compilation modes
