@@ -22,7 +22,7 @@ __attribute__((export_name("param_entry"))) int param_entry(int param1, int para
 }
 
 // Standard main for fallback testing
-__attribute__((export_name("main"))) int main(void)
+int main(void)
 {
     return 150; // Different from simple_test main
 }

@@ -56,30 +56,9 @@ config WASM_LWAC_TEST_STACKSIZE
 
 config WASM_LWAC_TEST_MODULE_PATH
 	string "Path to WASM test module(s)"
-	default "/etc"
+	default "/etc/lwac"
 	---help---
 		Specify the directory path where the compiled WASM test modules are located for the LWAC test runner.
 		This should match the installation path used in the test module Makefile.
-
-config WASM_LWAC_TEST_AOT_COMPILE
-	bool "Enable AOT compilation for test WASM modules"
-	default n
-	---help---
-		Enable Ahead-of-Time (AOT) compilation for test WASM modules
-		using wamrc compiler. This can improve runtime performance
-		but requires additional compilation time and WAMRC tool.
-
-config WASM_LWAC_TEST_AOT_FLAGS
-	string "AOT compilation flags"
-	default ""
-	depends on WASM_LWAC_TEST_AOT_COMPILE
-	---help---
-		Additional flags to pass to wamrc for AOT compilation.
-		Common flags include:
-		--target=<arch>: Target architecture (x86_64, aarch64, riscv64, etc.)
-		--enable-multi-thread: Enable multi-threading support
-		--enable-tail-call: Enable tail call optimization
-		--enable-simd: Enable SIMD support
-		--disable-hw-bound-check: Disable hardware bounds checking
 
 endif # WASM_LWAC_TEST

@@ -1,5 +1,5 @@
 # ##############################################################################
-# frameworks/runtimes/wasm/lwac/CMakeLists.txt
+# frameworks/runtimes/wasm/lwac/tests/test_wasm_modules/CMakeLists.txt
 #
 # Licensed to the Apache Software Foundation (ASF) under one or more contributor
 # license agreements.  See the NOTICE file distributed with this work for
@@ -18,34 +18,28 @@
 #
 # ##############################################################################
 
-if(CONFIG_WASM_LWAC)
-  nuttx_add_application(
-    NAME
-    lwac
-    SRCS
-    lwac.c
-    lwac_module_registry.c
-    loader.c
-    INCLUDE_DIRECTORIES
-    ${CMAKE_BINARY_DIR}/wamrmod
-    STACKSIZE
-    ${CONFIG_WASM_LWAC_STACKSIZE}
-    PRIORITY
-    ${CONFIG_WASM_LWAC_PRIORITY})
+# Add simple_test module
+wasm_add_application(
+  NAME
+  simple_test
+  SRCS
+  simple_test.c
+  STACK_SIZE
+  2048
+  INITIAL_MEMORY_SIZE
+  65536
+  INSTALL_NAME
+  ${CONFIG_WASM_LWAC_TEST_MODULE_PATH}/simple_test.wasm)
 
-  # Add WASM test modules
-  add_subdirectory(tests/test_wasm_modules)
-
-  # Add LWAC test application
-  if(CONFIG_WASM_LWAC_TEST)
-    nuttx_add_application(
-      NAME
-      lwac_test
-      SRCS
-      tests/lwac_test.c
-      STACKSIZE
-      ${CONFIG_WASM_LWAC_TEST_STACKSIZE}
-      PRIORITY
-      ${CONFIG_WASM_LWAC_TEST_PRIORITY})
-  endif()
-endif()
+# Add entry_point_test module
+wasm_add_application(
+  NAME
+  entry_point_test
+  SRCS
+  entry_point_test.c
+  STACK_SIZE
+  2048
+  INITIAL_MEMORY_SIZE
+  65536
+  INSTALL_NAME
+  ${CONFIG_WASM_LWAC_TEST_MODULE_PATH}/entry_point_test.wasm)

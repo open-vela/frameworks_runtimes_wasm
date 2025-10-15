@@ -106,7 +106,7 @@ The test framework is integrated with the following files:
 The main Makefile automatically builds WASM test modules during the build process using the `context::` target:
 ```makefile
 context::
-	$(MAKE) -C test_wasm_modules install APPDIR=$(APPDIR) WASI_SDK_PATH=$(WASI_SDK_PATH) AOT_COMPILE=$(CONFIG_WASM_LWAC_TEST_AOT_COMPILE) AOT_FLAGS=$(CONFIG_WASM_LWAC_TEST_AOT_FLAGS)
+	$(MAKE) -C test_wasm_modules install APPDIR=$(APPDIR) WASI_SDK_PATH=$(WASI_SDK_PATH)
 ```
 
 ### Test WASM Modules
@@ -213,7 +213,7 @@ make realclean
 2. **Configure build system:**
    - Configure with LWAC enabled
    - Enable CONFIG_WASM_LWAC_TEST in the configuration
-   - Optionally enable CONFIG_WASM_LWAC_TEST_AOT_COMPILE for AOT support
+
    - Set CONFIG_WASM_LWAC_TEST_AOT_FLAGS if using custom AOT compilation flags
 
 3. **Build the test runner and WASM modules:**
