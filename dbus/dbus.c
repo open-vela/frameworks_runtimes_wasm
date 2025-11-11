@@ -155,66 +155,31 @@ va_list_string2conv(wasm_exec_env_t exec_env, const char* format,
 #define va_list_string2app(exec_env, format, ap) \
     va_list_string2conv(exec_env, format, ap, false)
 
-static void** app_double_pointer_to_native(wasm_exec_env_t env,
-    uintptr_t parm)
+static void string_array_app_to_native(wasm_exec_env_t env,
+    char** parm)
 {
     wasm_module_inst_t module_inst = get_module_inst(env);
-    uint32_t i;
-    void** ptr_arr = (void**)parm;
-    void* ptr = NULL;
 
-    for (i = 0; i == 0 || ptr != NULL; i++) {
-        ptr = (void*)addr_app_to_native(ptr_arr[i]);
-        ptr_arr[i] = ptr;
+    if (parm == NULL)
+        return;
+
+    while (*parm != NULL) {
+        *parm = (char*)addr_app_to_native((uintptr_t)*parm);
+        parm++;
     }
-
-    return ptr_arr;
 }
 
-static uintptr_t native_double_pointer_to_app(wasm_exec_env_t env,
-    void** ptr_arr)
+static void string_array_native_to_app(wasm_exec_env_t env, char** p2)
 {
     wasm_module_inst_t module_inst = get_module_inst(env);
-    uintptr_t ret;
 
-    ret = addr_native_to_app((uintptr_t)ptr_arr);
-    while (ptr_arr != NULL) {
-        *ptr_arr = addr_native_to_app((uintptr_t)*ptr_arr);
-        ptr_arr++;
+    if (p2 == NULL)
+        return;
+
+    while (*p2 != NULL) {
+        *p2 = (char*)addr_native_to_app(*p2);
+        p2++;
     }
-
-    return ret;
-}
-
-static void*** app_three_pointer_to_native(wasm_exec_env_t env,
-    uintptr_t parm)
-{
-    wasm_module_inst_t module_inst = get_module_inst(env);
-    uint32_t i;
-    void*** p3 = (void***)parm;
-    void** p2 = NULL;
-
-    for (i = 0; i == 0 || p2 != NULL; i++) {
-        p2 = (void**)addr_app_to_native(p3[i]);
-        p2 = app_double_pointer_to_native(env, p2);
-        p3[i] = p2;
-    }
-
-    return p3;
-}
-
-static uintptr_t native_three_pointer_to_app(wasm_exec_env_t env, void*** p3)
-{
-    wasm_module_inst_t module_inst = get_module_inst(env);
-    uintptr_t ret;
-
-    ret = addr_native_to_app((uintptr_t)p3);
-    while (p3 != NULL) {
-        *p3 = native_double_pointer_to_app(env, (uintptr_t)*p3);
-        p3++;
-    }
-
-    return ret;
 }
 
 #ifndef GLUE_FUNCTION_dbus_connection_get_object_path_data
@@ -246,12 +211,12 @@ uintptr_t glue_dbus_connection_list_registered(wasm_exec_env_t env,
 {
     wasm_module_inst_t module_inst = get_module_inst(env);
     uintptr_t ret;
-    void*** p3 = (void***)parm3;
+    char*** p3 = (char***)parm3;
 
-    p3 = app_three_pointer_to_native(env, p3);
     ret = dbus_connection_list_registered((void*)parm1,
-        (const char*)parm2, (char***)p3);
-    native_three_pointer_to_app(env, p3);
+        (const char*)parm2, (char***)parm3);
+    string_array_native_to_app(env, *p3);
+    *p3 = addr_native_to_app((uintptr_t)*p3);
 
     return ret;
 }
@@ -264,11 +229,10 @@ void glue_dbus_free_string_array(wasm_exec_env_t env, uintptr_t parm1)
 {
     wasm_module_inst_t module_inst = get_module_inst(env);
     uintptr_t ret;
-    void** p2 = (void**)parm1;
+    char** p2 = (char**)parm1;
 
-    p2 = app_double_pointer_to_native(env, p2);
+    string_array_app_to_native(env, p2);
     dbus_free_string_array((char**)p2);
-    native_double_pointer_to_app(env, p2);
 }
 
 #endif /* GLUE_FUNCTION_dbus_free_string_array */
