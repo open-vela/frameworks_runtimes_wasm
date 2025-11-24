@@ -32,8 +32,9 @@ PARM1_INDEX = 4
 POINTER_SIGNATURE = ['...', '*', '_sa_handler_t', ',mbstate_t']
 
 BLACK_LIST = ['sigqueue', 'pthread_create', 'pthread_detach',
-              'pthread_key_create', 'pthread_key_delete', 'pthread_getspecific',
-              'pthread_setspecific', 'mallinfo', 'inet_ntoa', 'crypt', 'crypt_r']
+              'pthread_cancel', 'pthread_key_create', 'pthread_key_delete',
+              'pthread_getspecific', 'pthread_setspecific', 'mallinfo',
+              'inet_ntoa', 'crypt', 'crypt_r']
 
 VA_ADDITIONAL_FUNCS = [
     'asprintf', 'fprintf', 'fscanf', 'printf', 'snprintf', 'sprintf',

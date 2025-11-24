@@ -27,12 +27,346 @@
 #include <sys/param.h>
 #include <sys/socket.h>
 #include <sys/types.h>
+#include <math.h>
+#include <mqueue.h>
+#include <fcntl.h>
+#include <pthread.h>
 
 #include "wasm_export.h"
 
 /****************************************************************************
  * Private Data
  ****************************************************************************/
+
+#define validate_native_addr(addr, size) \
+    wasm_runtime_validate_native_addr(module_inst, addr, size)
+
+typedef int (*out_func_t)(int c, void* ctx);
+
+typedef char* _va_list;
+#define _INTSIZEOF(n) (((uint32_t)sizeof(n) + 3) & (uint32_t)~3)
+#define _va_arg(ap, t) (*(t*)((ap += _INTSIZEOF(t)) - _INTSIZEOF(t)))
+
+static void
+print_err(out_func_t out, void* ctx)
+{
+    out('E', ctx);
+    out('R', ctx);
+    out('R', ctx);
+}
+
+static int
+glue_memcpy_s(void* s1, unsigned int s1max, const void* s2, unsigned int n)
+{
+    char* dest = (char*)s1;
+    char* src = (char*)s2;
+    if (n == 0) {
+        return 0;
+    }
+
+    if (s1 == NULL) {
+        return -1;
+    }
+    if (s2 == NULL || n > s1max) {
+        memset(dest, 0, s1max);
+        return -1;
+    }
+    memcpy(dest, src, n);
+    return 0;
+}
+
+#define bh_memcpy_s(dest, dlen, src, slen)               \
+    do {                                                 \
+        int _ret = glue_memcpy_s(dest, dlen, src, slen); \
+        (void)_ret;                                      \
+        assert(_ret == 0);                               \
+    } while (0)
+
+#define CHECK_VA_ARG(ap, t)                                   \
+    do {                                                      \
+        if ((uint8_t*)ap + _INTSIZEOF(t) > native_end_addr) { \
+            if (fmt_buf != temp_fmt) {                        \
+                free(fmt_buf);                                \
+            }                                                 \
+            goto fail;                                        \
+        }                                                     \
+    } while (0)
+
+/* clang-format off */
+#define PREPARE_TEMP_FORMAT()                                \
+    char temp_fmt[32], *s, *fmt_buf = temp_fmt;              \
+    uint32_t fmt_buf_len = (uint32_t)sizeof(temp_fmt);           \
+    int32_t n;                                                 \
+                                                             \
+    /* additional 2 bytes: one is the format char,           \
+       the other is `\0` */                                  \
+    if ((uint32_t)(fmt - fmt_start_addr + 2) >= fmt_buf_len) { \
+        assert((uint32_t)(fmt - fmt_start_addr) <=          \
+                  UINT32_MAX - 2);                           \
+        fmt_buf_len = (uint32_t)(fmt - fmt_start_addr + 2);    \
+        if (!(fmt_buf = malloc(fmt_buf_len))) { \
+            print_err(out, ctx);                             \
+            break;                                           \
+        }                                                    \
+    }                                                        \
+                                                             \
+    memset(fmt_buf, 0, fmt_buf_len);                         \
+    glue_memcpy_s(fmt_buf, fmt_buf_len, fmt_start_addr,        \
+                (uint32_t)(fmt - fmt_start_addr + 1));
+/* clang-format on */
+
+#define OUTPUT_TEMP_FORMAT()           \
+    do {                               \
+        if (n > 0) {                   \
+            s = buf;                   \
+            while (*s)                 \
+                out((int)(*s++), ctx); \
+        }                              \
+                                       \
+        if (fmt_buf != temp_fmt) {     \
+            free(fmt_buf);             \
+        }                              \
+    } while (0)
+
+static bool
+_vprintf_wa(out_func_t out, void* ctx, const char* fmt, _va_list ap,
+    wasm_module_inst_t module_inst)
+{
+    int might_format = 0; /* 1 if encountered a '%' */
+    int long_ctr = 0;
+    const char* fmt_start_addr = NULL;
+
+    uint8_t* native_end_addr;
+
+    if (!wasm_runtime_get_native_addr_range(module_inst, (uint8_t*)ap, NULL,
+            &native_end_addr))
+        goto fail;
+
+    /* fmt has already been adjusted if needed */
+
+    while (*fmt) {
+        if (!might_format) {
+            if (*fmt != '%') {
+                out((int)*fmt, ctx);
+            } else {
+                might_format = 1;
+                long_ctr = 0;
+                fmt_start_addr = fmt;
+            }
+        } else {
+            switch (*fmt) {
+            case '.':
+            case '+':
+            case '-':
+            case ' ':
+            case '#':
+            case '0':
+            case '1':
+            case '2':
+            case '3':
+            case '4':
+            case '5':
+            case '6':
+            case '7':
+            case '8':
+            case '9':
+                goto still_might_format;
+
+            case 't': /* ptrdiff_t */
+            case 'z': /* size_t (32bit on wasm) */
+                long_ctr = 1;
+                goto still_might_format;
+
+            case 'j':
+                /* intmax_t/uintmax_t */
+                long_ctr = 2;
+                goto still_might_format;
+
+            case 'l':
+                long_ctr++;
+                /* Fall through */
+            case 'h':
+                /* FIXME: do nothing for these modifiers */
+                goto still_might_format;
+
+            case 'o':
+            case 'd':
+            case 'i':
+            case 'u':
+            case 'p':
+            case 'x':
+            case 'X':
+            case 'c': {
+                char buf[64];
+                PREPARE_TEMP_FORMAT();
+
+                if (long_ctr < 2) {
+                    int32_t d;
+
+                    CHECK_VA_ARG(ap, uint32_t);
+                    d = _va_arg(ap, int32_t);
+
+                    if (long_ctr == 1) {
+                        uint32_t fmt_end_idx = (uint32_t)(fmt - fmt_start_addr);
+
+                        if (fmt_buf[fmt_end_idx - 1] == 'l'
+                            || fmt_buf[fmt_end_idx - 1] == 'z'
+                            || fmt_buf[fmt_end_idx - 1] == 't') {
+                            /* The %ld, %zd and %td should be treated as
+                             * 32bit integer in wasm */
+                            fmt_buf[fmt_end_idx - 1] = fmt_buf[fmt_end_idx];
+                            fmt_buf[fmt_end_idx] = '\0';
+                        }
+                    }
+
+                    n = snprintf(buf, sizeof(buf), fmt_buf, d);
+                } else {
+                    int64_t lld;
+
+                    /* Make 8-byte aligned */
+                    ap = (_va_list)(((uintptr_t)ap + 7) & ~(uintptr_t)7);
+                    CHECK_VA_ARG(ap, uint64_t);
+                    lld = _va_arg(ap, int64_t);
+                    n = snprintf(buf, sizeof(buf), fmt_buf, lld);
+                }
+
+                OUTPUT_TEMP_FORMAT();
+                break;
+            }
+
+            case 's': {
+                char buf_tmp[128], *buf = buf_tmp;
+                char* start;
+                uint32_t s_offset, str_len, buf_len;
+
+                PREPARE_TEMP_FORMAT();
+
+                CHECK_VA_ARG(ap, int32_t);
+                s_offset = _va_arg(ap, uint32_t);
+
+                if (!wasm_runtime_validate_app_str_addr(module_inst, s_offset)) {
+                    if (fmt_buf != temp_fmt) {
+                        free(fmt_buf);
+                    }
+                    return false;
+                }
+
+                s = start = addr_app_to_native((uint64_t)s_offset);
+
+                str_len = (uint32_t)strlen(start);
+                if (str_len >= UINT32_MAX - 64) {
+                    print_err(out, ctx);
+                    if (fmt_buf != temp_fmt) {
+                        free(fmt_buf);
+                    }
+                    break;
+                }
+
+                /* reserve 64 more bytes as there may be width description
+                 * in the fmt */
+                buf_len = str_len + 64;
+
+                if (buf_len > (uint32_t)sizeof(buf_tmp)) {
+                    if (!(buf = malloc(buf_len))) {
+                        print_err(out, ctx);
+                        if (fmt_buf != temp_fmt) {
+                            free(fmt_buf);
+                        }
+                        break;
+                    }
+                }
+
+                n = snprintf(buf, buf_len, fmt_buf,
+                    (s_offset == 0 && str_len == 0) ? NULL
+                                                    : start);
+
+                OUTPUT_TEMP_FORMAT();
+
+                if (buf != buf_tmp) {
+                    free(buf);
+                }
+
+                break;
+            }
+
+            case '%': {
+                out((int)'%', ctx);
+                break;
+            }
+
+            case 'e':
+            case 'E':
+            case 'g':
+            case 'G':
+            case 'f':
+            case 'F': {
+                double f64;
+                char buf[64];
+                PREPARE_TEMP_FORMAT();
+
+                /* Make 8-byte aligned */
+                ap = (_va_list)(((uintptr_t)ap + 7) & ~(uintptr_t)7);
+                CHECK_VA_ARG(ap, double);
+                f64 = _va_arg(ap, double);
+                n = snprintf(buf, sizeof(buf), fmt_buf, f64);
+
+                OUTPUT_TEMP_FORMAT();
+                break;
+            }
+
+            case 'n':
+                /* print nothing */
+                break;
+
+            default:
+                out((int)'%', ctx);
+                out((int)*fmt, ctx);
+                break;
+            }
+
+            might_format = 0;
+        }
+
+    still_might_format:
+        ++fmt;
+    }
+    return true;
+
+fail:
+    wasm_runtime_set_exception(module_inst, "out of bounds memory access");
+    return false;
+}
+
+#ifndef BUILTIN_LIBC_BUFFERED_PRINTF
+#define BUILTIN_LIBC_BUFFERED_PRINTF 0
+#endif
+
+#ifndef BUILTIN_LIBC_BUFFERED_PRINT_SIZE
+#define BUILTIN_LIBC_BUFFERED_PRINT_SIZE 128
+#endif
+
+struct str_context {
+    char* str;
+    uint32_t max;
+    uint32_t count;
+};
+
+static int
+sprintf_out(int c, struct str_context* ctx)
+{
+    if (!ctx->str || ctx->count >= ctx->max) {
+        ctx->count++;
+        return c;
+    }
+
+    if (ctx->count == ctx->max - 1) {
+        ctx->str[ctx->count++] = '\0';
+    } else {
+        ctx->str[ctx->count++] = (char)c;
+    }
+
+    return c;
+}
 
 static sem_t g_aligned_memory_map_sem = SEM_INITIALIZER(1);
 static uintptr_t g_aligned_memory_map
@@ -522,6 +856,276 @@ uintptr_t glue_versionsort(wasm_exec_env_t env, uintptr_t parm1,
     return ret;
 }
 #endif /* GLUE_FUNCTION_versionsort */
+
+#if !defined(CONFIG_DISABLE_PTHREAD)
+#ifndef GLUE_FUNCTION_pthread_once
+#define GLUE_FUNCTION_pthread_once
+
+static wasm_exec_env_t pthread_once_env;
+static int init_routine_idx;
+
+void init_routine_proxy(void)
+{
+    wasm_module_inst_t module_inst = get_module_inst(pthread_once_env);
+    uint32_t argv[1];
+
+    wasm_runtime_call_indirect(pthread_once_env, init_routine_idx, 0, argv);
+}
+
+uintptr_t glue_pthread_once(wasm_exec_env_t env, uintptr_t parm1, uintptr_t parm2)
+{
+    wasm_module_inst_t module_inst = get_module_inst(env);
+    uintptr_t ret;
+    void* addr_app = addr_app_to_native((uintptr_t)NULL);
+    if ((void*)parm1 == addr_app)
+        parm1 = (uintptr_t)NULL;
+
+    pthread_once_env = env;
+    init_routine_idx = parm2;
+
+    ret = pthread_once((FAR pthread_once_t*)parm1, init_routine_proxy);
+    return ret;
+}
+#endif /* GLUE_FUNCTION_pthread_once */
+#endif /* !defined(CONFIG_DISABLE_PTHREAD) */
+
+#ifndef GLUE_FUNCTION_printf
+#define GLUE_FUNCTION_printf
+uintptr_t glue_printf(wasm_exec_env_t env, uintptr_t format, va_list ap)
+{
+    wasm_module_inst_t module_inst = get_module_inst(env);
+    uintptr_t ret;
+
+    /* TODO: handle %.*s */
+    if (strstr(format, "%.*s") != NULL) {
+        return 0;
+    }
+    va_list_string2native(env, format, ap);
+    ret = vprintf((FAR const IPTR char*)format, ap);
+    va_list_string2app(env, format, ap);
+    return ret;
+}
+#endif /* GLUE_FUNCTION_printf */
+
+#ifndef GLUE_FUNCTION_snprintf
+#define GLUE_FUNCTION_snprintf
+int glue_snprintf(wasm_exec_env_t exec_env, char* str, uint32_t size,
+    const char* format, _va_list va_args)
+{
+    wasm_module_inst_t module_inst = get_module_inst(exec_env);
+    struct str_context ctx;
+
+    /* str and format have been checked by runtime */
+    if (!validate_native_addr(va_args, (uint64_t)sizeof(uint32_t)))
+        return 0;
+
+    ctx.str = str;
+    ctx.max = size;
+    ctx.count = 0;
+
+    if (!_vprintf_wa((out_func_t)sprintf_out, &ctx, format, va_args,
+            module_inst))
+        return 0;
+
+    if (ctx.count < ctx.max) {
+        str[ctx.count] = '\0';
+    }
+
+    return (int)ctx.count;
+}
+#endif /* GLUE_FUNCTION_snprintf */
+
+#ifndef GLUE_FUNCTION_sprintf
+#define GLUE_FUNCTION_sprintf
+int glue_sprintf(wasm_exec_env_t exec_env, char* str, const char* format,
+    _va_list va_args)
+{
+    wasm_module_inst_t module_inst = get_module_inst(exec_env);
+    struct str_context ctx;
+
+    /* str and format have been checked by runtime */
+    if (!validate_native_addr(va_args, (uint64_t)sizeof(uint32_t)))
+        return 0;
+
+    ctx.str = str;
+    ctx.max = INT_MAX;
+    ctx.count = 0;
+
+    if (!_vprintf_wa((out_func_t)sprintf_out, &ctx, format, va_args,
+            module_inst))
+        return 0;
+
+    if (ctx.count < ctx.max) {
+        str[ctx.count] = '\0';
+    }
+
+    return (int)ctx.count;
+}
+#endif /* GLUE_FUNCTION_sprintf */
+
+#ifndef GLUE_FUNCTION_strtod
+#define GLUE_FUNCTION_strtod
+uintptr_t glue_strtod(wasm_exec_env_t env, uintptr_t parm1, uintptr_t parm2)
+{
+    wasm_module_inst_t module_inst = get_module_inst(env);
+    uintptr_t ret;
+    void* addr_app = addr_app_to_native((uintptr_t)NULL);
+    if ((void*)parm1 == addr_app)
+        parm1 = (uintptr_t)NULL;
+
+    if ((void*)parm2 == addr_app)
+        parm2 = (uintptr_t)NULL;
+
+    char** end = (char**)parm2;
+
+    ret = strtod((FAR const char*)parm1, (FAR char**)end);
+    if (end != NULL) {
+        *end = addr_native_to_app(*end);
+    }
+
+    return ret;
+}
+#endif /* GLUE_FUNCTION_strtod */
+
+#ifndef GLUE_FUNCTION_pow
+#define GLUE_FUNCTION_pow
+double glue_pow(wasm_exec_env_t env, double parm1, double parm2)
+{
+    wasm_module_inst_t module_inst = get_module_inst(env);
+    double ret;
+    ret = pow((double)parm1, (double)parm2);
+    return ret;
+}
+#endif /* GLUE_FUNCTION_pow */
+
+#ifndef GLUE_FUNCTION_mq_open
+#define GLUE_FUNCTION_mq_open
+mqd_t glue_mq_open(wasm_exec_env_t env, const char* mq_name, int oflag, _va_list ap)
+{
+    wasm_module_inst_t module_inst = get_module_inst(env);
+    int ret;
+    if ((oflag & O_CREAT) != 0) {
+        mode_t mode = _va_arg(ap, mode_t);
+        uint32_t attr = _va_arg(ap, uint32_t);
+        void* attr1 = (void*)addr_app_to_native(attr);
+        ret = mq_open((FAR const char*)mq_name, oflag, mode, attr1);
+        return (int)ret;
+    }
+
+    ret = mq_open((FAR const char*)mq_name, oflag);
+    return (int)ret;
+}
+#endif /* GLUE_FUNCTION_mq_open */
+
+#ifndef GLUE_FUNCTION_open
+#define GLUE_FUNCTION_open
+int glue_open(wasm_exec_env_t env, const char* path, int flags, _va_list ap)
+{
+    wasm_module_inst_t module_inst = get_module_inst(env);
+    int ret;
+    if ((flags & O_CREAT) != 0) {
+        mode_t mode = _va_arg(ap, mode_t);
+        ret = open((FAR const char*)path, flags, mode);
+        return (int)ret;
+    }
+
+    ret = open((FAR const char*)path, flags);
+    return ret;
+}
+#endif /* GLUE_FUNCTION_open */
+
+#if defined(CONFIG_HAVE_DOUBLE) && !defined(CONFIG_LIBM_NONE)
+#ifndef GLUE_FUNCTION_fmod
+#define GLUE_FUNCTION_fmod
+double glue_fmod(wasm_exec_env_t env, double parm1, double parm2)
+{
+    wasm_module_inst_t module_inst = get_module_inst(env);
+    double ret;
+    ret = fmod((double)parm1, (double)parm2);
+    return ret;
+}
+#endif /* GLUE_FUNCTION_fmod */
+#endif /* defined(CONFIG_HAVE_DOUBLE) && !defined(CONFIG_LIBM_NONE) */
+
+#if defined(CONFIG_HAVE_DOUBLE) && !defined(CONFIG_LIBM_NONE)
+#ifndef GLUE_FUNCTION_cos
+#define GLUE_FUNCTION_cos
+double glue_cos(wasm_exec_env_t env, double parm1)
+{
+    wasm_module_inst_t module_inst = get_module_inst(env);
+    double ret;
+    ret = cos((double)parm1);
+    return ret;
+}
+
+#endif /* GLUE_FUNCTION_cos */
+#endif /* defined(CONFIG_HAVE_DOUBLE) && !defined(CONFIG_LIBM_NONE) */
+
+#if defined(CONFIG_HAVE_DOUBLE) && !defined(CONFIG_LIBM_NONE)
+#ifndef GLUE_FUNCTION_sin
+#define GLUE_FUNCTION_sin
+double glue_sin(wasm_exec_env_t env, double parm1)
+{
+    wasm_module_inst_t module_inst = get_module_inst(env);
+    double ret;
+    ret = sin((double)parm1);
+    return ret;
+}
+#endif /* GLUE_FUNCTION_sin */
+#endif /* defined(CONFIG_HAVE_DOUBLE) && !defined(CONFIG_LIBM_NONE) */
+
+#if defined(CONFIG_HAVE_DOUBLE) && !defined(CONFIG_LIBM_NONE)
+#ifndef GLUE_FUNCTION_acos
+#define GLUE_FUNCTION_acos
+double glue_acos(wasm_exec_env_t env, double parm1)
+{
+    wasm_module_inst_t module_inst = get_module_inst(env);
+    double ret;
+    ret = acos((double)parm1);
+    return ret;
+}
+#endif /* GLUE_FUNCTION_acos */
+#endif /* defined(CONFIG_HAVE_DOUBLE) && !defined(CONFIG_LIBM_NONE) */
+
+#if defined(CONFIG_HAVE_DOUBLE) && !defined(CONFIG_LIBM_NONE)
+#ifndef GLUE_FUNCTION_asin
+#define GLUE_FUNCTION_asin
+double glue_asin(wasm_exec_env_t env, double parm1)
+{
+    wasm_module_inst_t module_inst = get_module_inst(env);
+    double ret;
+    ret = asin((double)parm1);
+    return ret;
+}
+#endif /* GLUE_FUNCTION_asin */
+#endif /* defined(CONFIG_HAVE_DOUBLE) && !defined(CONFIG_LIBM_NONE) */
+
+#if defined(CONFIG_HAVE_DOUBLE) && !defined(CONFIG_LIBM_NONE)
+#ifndef GLUE_FUNCTION_atan2
+#define GLUE_FUNCTION_atan2
+double glue_atan2(wasm_exec_env_t env, double parm1, double parm2)
+{
+    wasm_module_inst_t module_inst = get_module_inst(env);
+    double ret;
+    ret = atan2((double)parm1, (double)parm2);
+    return ret;
+}
+#endif /* GLUE_FUNCTION_atan2 */
+#endif /* defined(CONFIG_HAVE_DOUBLE) && !defined(CONFIG_LIBM_NONE) */
+
+#if defined(CONFIG_HAVE_DOUBLE) && !defined(CONFIG_LIBM_NONE)
+
+#ifndef GLUE_FUNCTION_ldexp
+#define GLUE_FUNCTION_ldexp
+double glue_ldexp(wasm_exec_env_t env, double parm1, int parm2)
+{
+    wasm_module_inst_t module_inst = get_module_inst(env);
+    double ret;
+    ret = ldexp((double)parm1, (int)parm2);
+    return ret;
+}
+#endif /* GLUE_FUNCTION_ldexp */
+#endif /* defined(CONFIG_HAVE_DOUBLE) && !defined(CONFIG_LIBM_NONE) */
 
 /****************************************************************************
  * Included Files
