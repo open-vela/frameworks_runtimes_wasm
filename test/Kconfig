@@ -22,7 +22,7 @@ config WASM_TEST_PRIORITY
 
 config WASM_TEST_STACKSIZE
 	int "stack size"
-	default DEFAULT_TASK_STACKSIZE
+	default 8192
 
 config WASM_TEST_LIBC
 	bool "Enable libc test"
